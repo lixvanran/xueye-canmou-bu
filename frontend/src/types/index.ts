@@ -18,6 +18,21 @@ export interface Message {
     user_resources?: Array<{ code: string; title: string; type: string; score: number; has_file?: boolean }>
     kb_results?: Array<{ title: string; type: string; score: number }>
   }
+  // v0.1: RAG 全过程 trace
+  rag_trace?: {
+    query: string
+    started_at: number
+    finished_at?: number
+    latency_ms?: number
+    stages: Array<{
+      stage: string
+      timestamp_ms: number
+      input_summary: string
+      output_summary: string
+      data: any
+    }>
+    summary: any
+  }
   search_results?: Array<{
     tool: string
     args: any

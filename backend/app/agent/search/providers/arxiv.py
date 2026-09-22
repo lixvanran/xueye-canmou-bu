@@ -28,7 +28,7 @@ async def arxiv_search(query: str, max_results: int = 5, time_hint: dict = None)
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
             resp = await client.get(
                 url,
-                headers={"User-Agent": "ZhangXueFengAgent/0.8 (educational)"},
+                headers={"User-Agent": "CoachAssistant/0.8 (educational)"},
             )
         if resp.status_code != 200:
             return {

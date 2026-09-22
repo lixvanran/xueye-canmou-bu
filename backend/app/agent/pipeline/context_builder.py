@@ -51,6 +51,7 @@ async def build_messages(
     web_search_enabled: Optional[bool] = None,
     deep_thinking_enabled: Optional[bool] = None,
     include_image: bool = False,
+    tracer = None,  # v0.1: RAG tracer
 ) -> Dict:
     """拼装完整 messages + RAG 摘要
     Returns: {
@@ -58,17 +59,36 @@ async def build_messages(
         "rag_summary": {...},
         "user_resources": [...],
         "kb_results": [...],
+        "rag_trace": {...}  # v0.1
     }
     """
-    # 1) 拉历史 + profile
-    history = memory.get_conversation_history(conversation_id, limit=10) if conversation_id else []
+    # 1) 拉历史 + profile + 长期事实
+    # v0.9.9: 短期记忆 (last 6 条原文) + 长期事实 (高密度)
+    history = memory.get_conversation_history(conversation_id, limit=6) if conversation_id else []
     user_profile = memory.get_user_profile(user_id)
+    user_facts = memory.get_user_facts(user_id, limit=30)  # v0.9.9 长期事实
 
-    # 2) RAG
-    user_resources = rag_engine.search_user_resources(user_message, user_id, top_k=3)
-    kb_results = rag_engine.search_knowledge_base(user_message, top_k=5)
-    rag_context = rag_engine.build_context(user_resources, kb_results)
+    if tracer:
+        tracer.add_stage("memory_load", f"user_id={user_id}",
+            f"history={len(history)} msgs, facts={len(user_facts)}",
+            {"history_count": len(history), "facts_count": len(user_facts)})
+
+    # 2) RAG (with tracer)
+    if tracer:
+        tracer.add_stage("init", f"user_id={user_id}, scenario={scenario}",
+            "starting RAG pipeline", {"user_id": user_id, "scenario": scenario})
+    user_resources = rag_engine.search_user_resources(user_message, user_id, top_k=3, tracer=tracer)
+    kb_results = rag_engine.search_knowledge_base(user_message, top_k=5, tracer=tracer)
+    rag_context = rag_engine.build_context(user_resources, kb_results, tracer=tracer)
     rag_summary = _summarize_rag(user_resources, kb_results)
+    if tracer:
+        tracer.finish({
+            "user_resources_count": len(user_resources),
+            "kb_results_count": len(kb_results),
+            "rag_context_chars": len(rag_context),
+            "history_count": len(history),
+            "facts_count": len(user_facts),
+        })
 
     # 3) 解析 toggle
     ws_on = _resolve_toggle(web_search_enabled, "WEB_SEARCH_ENABLED")
@@ -79,6 +99,12 @@ async def build_messages(
         scenario, user_profile, rag_context,
         web_search_enabled=ws_on, deep_thinking_enabled=dt_on,
     )
+
+    # v0.9.9: 在 system prompt 顶部塞长期事实 (人脑长期记忆类比)
+    if user_facts:
+        from app.agent.memory.fact_extractor import format_facts_for_prompt
+        facts_block = format_facts_for_prompt(user_facts)
+        system_prompt = facts_block + "\n\n" + system_prompt
 
     # 5) 拼 messages
     messages: List[Dict] = [{"role": "system", "content": system_prompt}]
@@ -103,4 +129,5 @@ async def build_messages(
         "kb_results": kb_results,
         "ws_on": ws_on,
         "dt_on": dt_on,
+        "rag_trace": tracer.to_dict() if tracer else None,  # v0.1
     }

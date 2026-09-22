@@ -9,6 +9,7 @@ from app.agent.memory.store import (
     get_conversation, create_conversation, update_conversation_title,
     list_conversation_messages, save_message,
     get_user_profile as _get_user_profile,
+    list_user_facts, add_user_fact, mark_fact_stale,  # v0.9.9
 )
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,35 @@ class MemoryManager:
 
     def get_user_profile(self, user_id: int) -> Dict:
         return _get_user_profile(self.db, user_id)
+
+    # ===== v0.9.9: 长期事实 (user_facts) =====
+
+    def get_user_facts(self, user_id: int = 1, limit: int = 30) -> List[Dict]:
+        """取用户活跃事实 (按 importance 降序)
+        用于塞到 system prompt 顶部, 模仿人脑长期记忆
+        """
+        rows = list_user_facts(self.db, user_id=user_id, limit=limit, include_stale=False)
+        return [
+            {
+                "id": r.id,
+                "category": r.category,
+                "fact": r.fact,
+                "importance": r.importance,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ]
+
+    def add_user_fact(self, user_id: int, fact: str, category: str = "profile",
+                       importance: float = 0.5, source_conversation_id: Optional[int] = None) -> Dict:
+        rec = add_user_fact(self.db, user_id, fact, category, importance, source_conversation_id)
+        return {
+            "id": rec.id, "category": rec.category, "fact": rec.fact,
+            "importance": rec.importance,
+        }
+
+    def mark_fact_stale(self, fact_id: int) -> bool:
+        return mark_fact_stale(self.db, fact_id)
 
     def close(self):
         self.db.close()

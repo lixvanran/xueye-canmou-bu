@@ -1,7 +1,7 @@
 /** 客户端 feature toggle - localStorage 持久化 */
 const TOGGLE_KEYS = {
-  web_search: 'zxf_web_search_enabled',
-  deep_thinking: 'zxf_deep_thinking_enabled',
+  web_search: 'teacher_web_search_enabled',
+  deep_thinking: 'teacher_deep_thinking_enabled',
 } as const
 
 export function getToggle(key: 'web_search' | 'deep_thinking'): boolean {

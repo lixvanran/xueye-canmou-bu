@@ -3,8 +3,9 @@
 """
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
+from datetime import datetime
 
-from app.db.database import MessageORM, ConversationORM, UserORM
+from app.db.database import MessageORM, ConversationORM, UserORM, UserFactORM
 
 
 SCENARIO_DEFAULT_TITLES = {
@@ -12,6 +13,53 @@ SCENARIO_DEFAULT_TITLES = {
     "exam": "备考答疑",
     "chat": "随便聊聊",
 }
+
+
+# v0.9.9: UserFact 底层 CRUD
+def list_user_facts(db: Session, user_id: int = 1, limit: int = 30, include_stale: bool = False) -> List[UserFactORM]:
+    q = db.query(UserFactORM).filter_by(user_id=user_id)
+    if not include_stale:
+        q = q.filter_by(stale=0)
+    return q.order_by(UserFactORM.importance.desc(), UserFactORM.updated_at.desc()).limit(limit).all()
+
+
+def add_user_fact(
+    db: Session,
+    user_id: int,
+    fact: str,
+    category: str = "profile",
+    importance: float = 0.5,
+    source_conversation_id: Optional[int] = None,
+) -> UserFactORM:
+    """加一条 fact, 如果同 category+同 fact 已存在, 更新 importance"""
+    existing = db.query(UserFactORM).filter_by(
+        user_id=user_id, fact=fact, category=category
+    ).first()
+    if existing:
+        existing.importance = max(existing.importance, importance)
+        existing.updated_at = datetime.now()
+        db.commit()
+        return existing
+    rec = UserFactORM(
+        user_id=user_id,
+        category=category,
+        fact=fact,
+        importance=importance,
+        source_conversation_id=source_conversation_id,
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+    return rec
+
+
+def mark_fact_stale(db: Session, fact_id: int) -> bool:
+    rec = db.query(UserFactORM).filter_by(id=fact_id).first()
+    if not rec:
+        return False
+    rec.stale = 1
+    db.commit()
+    return True
 
 
 def get_conversation(db: Session, conversation_id: int) -> Optional[ConversationORM]:

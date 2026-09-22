@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react'
 import {
   Settings, RefreshCw, CheckCircle2, XCircle, AlertTriangle,
   ExternalLink, Copy, X, Zap, ChevronDown, ChevronRight,
-  Server, Activity, Wallet, Save, Loader2
+  Server, Activity, Wallet, Save, Loader2, Key, Eye, EyeOff, Trash2
 } from 'lucide-react'
 import api from '@/api/client'
 
@@ -98,7 +98,7 @@ interface Props {
   onClose?: () => void
 }
 
-type Tab = 'api' | 'models' | 'usage'
+type Tab = 'key' | 'api' | 'models' | 'usage'
 
 const TIER_LABEL: Record<'low' | 'medium' | 'high', { name: string; color: string; bg: string; border: string }> = {
   low: { name: 'LOW', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' },
@@ -137,6 +137,9 @@ export default function SettingsModal({ inline = false, onClose }: Props) {
 
         {/* Tabs */}
         <div className="flex border-b border-black/5 flex-shrink-0 px-5">
+          <TabButton active={tab === 'key'} onClick={() => setTab('key')} icon={<Key size={14} />}>
+            API Key
+          </TabButton>
           <TabButton active={tab === 'api'} onClick={() => setTab('api')} icon={<Activity size={14} />}>
             API 状态
           </TabButton>
@@ -150,6 +153,7 @@ export default function SettingsModal({ inline = false, onClose }: Props) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5">
+          {tab === 'key' && <ApiKeyTab onKeyUpdated={() => {}} />}
           {tab === 'api' && <ApiStatusTab />}
           {tab === 'models' && <ModelSettingsTab />}
           {tab === 'usage' && <UsageTab />}
@@ -173,6 +177,238 @@ function TabButton({ active, onClick, icon, children }: { active: boolean; onCli
       {icon}
       {children}
     </button>
+  )
+}
+
+
+// ===== Tab 0: API Key 配置 (v0.1.2 新增, 让用户直接填) =====
+
+function ApiKeyTab({ onKeyUpdated }: { onKeyUpdated: () => void }) {
+  const [status, setStatus] = useState<{ is_set: boolean; prefix: string | null } | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [keyInput, setKeyInput] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [testResult, setTestResult] = useState<any>(null)
+
+  const loadStatus = async () => {
+    setLoading(true)
+    try {
+      const r = await api.get<{ is_set: boolean; prefix: string | null }>('/settings/api-key/status')
+      setStatus(r.data)
+    } catch (e: any) {
+      setMsg({ type: 'err', text: '加载状态失败: ' + (e?.message || '?') })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadStatus() }, [])
+
+  const handleSave = async () => {
+    const key = keyInput.trim()
+    if (!key) {
+      setMsg({ type: 'err', text: '请先填入 key' })
+      return
+    }
+    setSaving(true)
+    setMsg(null)
+    setTestResult(null)
+    try {
+      const r = await api.post<{ success: boolean; message: string; prefix: string }>('/settings/api-key', { api_key: key })
+      setMsg({ type: 'ok', text: `✓ ${r.data.message}` })
+      setKeyInput('')
+      setShowKey(false)
+      loadStatus()
+      onKeyUpdated()
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail || e?.message || '?'
+      setMsg({ type: 'err', text: `保存失败: ${detail}` })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleTest = async () => {
+    const key = keyInput.trim() || (status?.prefix ? '' : '')  // 测当前输入框的值
+    if (!key) {
+      setMsg({ type: 'err', text: '请先填入 key 再测试' })
+      return
+    }
+    setTesting(true)
+    setMsg(null)
+    setTestResult(null)
+    try {
+      const r = await api.post<any>('/settings/api-key/test', { api_key: key })
+      setTestResult(r.data)
+      if (r.data.ok) {
+        setMsg({ type: 'ok', text: '✓ Key 有效 (OpenRouter 认证通过)' })
+      } else {
+        setMsg({ type: 'err', text: `✗ Key 无效: ${r.data.error || '?'}` })
+      }
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail || e?.message || '?'
+      setMsg({ type: 'err', text: `测试失败: ${detail}` })
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  const handleClear = async () => {
+    if (!confirm('确定要清空 API Key? \n下次启动服务后所有 LLM 调用将失败, 需要重新填。')) return
+    setLoading(true)
+    try {
+      await api.delete('/settings/api-key')
+      setMsg({ type: 'ok', text: '✓ Key 已清空 (需重启服务生效)' })
+      loadStatus()
+    } catch (e: any) {
+      setMsg({ type: 'err', text: '清空失败: ' + (e?.message || '?') })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* 当前状态 */}
+      <div className={`rounded-lg p-4 border ${
+        status?.is_set ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'
+      }`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {loading ? (
+              <Loader2 size={16} className="animate-spin text-gray-400" />
+            ) : status?.is_set ? (
+              <CheckCircle2 size={20} className="text-green-600" />
+            ) : (
+              <AlertTriangle size={20} className="text-orange-500" />
+            )}
+            <div>
+              <div className="font-semibold text-sm">
+                {status?.is_set ? 'API Key 已设置' : 'API Key 未设置'}
+              </div>
+              {status?.is_set && status.prefix && (
+                <div className="text-xs text-gray-600 mt-0.5 font-mono">
+                  当前: {status.prefix}
+                </div>
+              )}
+            </div>
+          </div>
+          {status?.is_set && (
+            <button
+              onClick={handleClear}
+              disabled={loading}
+              className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1"
+            >
+              <Trash2 size={12} /> 清空
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 输入区 */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {status?.is_set ? '更换 Key (新值)' : '填入 OpenRouter API Key'}
+        </label>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <input
+              type={showKey ? 'text' : 'password'}
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              placeholder="sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              disabled={saving}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleTest() }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey(!showKey)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              tabIndex={-1}
+            >
+              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          <ExternalLink size={11} className="inline" /> 去{' '}
+          <a
+            href="https://openrouter.ai/keys"
+            target="_blank"
+            rel="noreferrer"
+            className="text-purple-600 hover:underline"
+          >
+            openrouter.ai/keys
+          </a>{' '}
+          申请 → 一把 Key 调 Claude / GPT / Qwen / DeepSeek 等
+        </p>
+
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={handleTest}
+            disabled={testing || !keyInput.trim()}
+            className="px-4 py-2 text-sm bg-white border border-purple-300 text-purple-700 rounded-md hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          >
+            {testing ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+            测试 Key
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !keyInput.trim()}
+            className="px-4 py-2 text-sm bg-purple-500 text-white rounded-md hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            保存到 .env
+          </button>
+        </div>
+      </div>
+
+      {/* 提示消息 */}
+      {msg && (
+        <div className={`rounded-lg p-3 border text-sm ${
+          msg.type === 'ok'
+            ? 'bg-green-50 border-green-200 text-green-800'
+            : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          {msg.text}
+        </div>
+      )}
+
+      {/* 测试结果 */}
+      {testResult && testResult.ok && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm space-y-1">
+          <div className="font-semibold text-green-800 flex items-center gap-1">
+            <CheckCircle2 size={14} /> OpenRouter 账户信息
+          </div>
+          {testResult.email && (
+            <div className="text-gray-700">📧 邮箱: <span className="font-mono">{testResult.email}</span></div>
+          )}
+          {testResult.is_free_tier !== undefined && (
+            <div className="text-gray-700">
+              🎁 套餐: {testResult.is_free_tier ? '免费档' : '付费档'}
+            </div>
+          )}
+          {testResult.limit !== null && (
+            <div className="text-gray-700">
+              💰 总额度: ${testResult.limit?.toFixed(2) || '0'} | 剩余: ${testResult.limit_remaining?.toFixed(2) || '0'} | 已用: ${testResult.usage?.toFixed(2) || '0'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 流程说明 */}
+      <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 space-y-1">
+        <div className="font-medium text-gray-700">📋 使用流程</div>
+        <div>1. 申请 OpenRouter Key (上面链接)</div>
+        <div>2. 在输入框粘贴 → 点「测试 Key」验证 → 看账户信息</div>
+        <div>3. 点「保存到 .env」写入 <span className="font-mono">backend/.env</span></div>
+        <div>4. <span className="text-orange-600 font-medium">重启服务 (双击 启动.bat) 生效</span></div>
+      </div>
+    </div>
   )
 }
 

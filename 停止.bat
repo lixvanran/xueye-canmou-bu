@@ -20,8 +20,8 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3000 "') do (
     taskkill /F /PID %%a >nul 2>&1
 )
 
-taskkill /F /FI "WINDOWTITLE eq ZXF-Backend*" >nul 2>&1
-taskkill /F /FI "WINDOWTITLE eq ZXF-Frontend*" >nul 2>&1
+taskkill /F /FI "WINDOWTITLE eq Agent-Backend*" >nul 2>&1
+taskkill /F /FI "WINDOWTITLE eq Agent-Frontend*" >nul 2>&1
 
 echo.
 echo Done.

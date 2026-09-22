@@ -8,7 +8,7 @@ from typing import Optional, Dict, List
 
 MAX_QUERY_ROUNDS = 5
 
-# 必问 4 项 (张雪峰风格话术)
+# 必问 4 项 (张老师风格话术)
 REQUIRED_QUESTIONS: Dict[str, List[str]] = {
     "score": [
         "你孩子考了多少分？先把这个告诉我。",

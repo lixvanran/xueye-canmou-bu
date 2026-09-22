@@ -1,5 +1,5 @@
 """gaokao_client.py — 掌上高考 API 客户端 (v0.9.8 新增)
-参考: https://github.com/aster2024/zhangxuefeng_agent (核心数据源)
+参考: https://github.com/aster2024/teacher_zhang_agent (核心数据源)
 
 API 文档 (逆向自 gaokao.cn 前端 JS):
 - Base URL: https://api.zjzw.cn/web/api/

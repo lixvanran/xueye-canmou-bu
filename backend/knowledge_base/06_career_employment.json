@@ -1,6 +1,6 @@
 [
   {
-    "id": "zxf-jiuye-001",
+    "id": "zx-jiuye-001",
     "type": "quote",
     "category": "就业",
     "text": "你以为你毕业能进银行当行长？你只能去银行卖理财产品。",
@@ -15,7 +15,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-002",
+    "id": "zx-jiuye-002",
     "type": "quote",
     "category": "就业",
     "text": "什么是好工作？钱多、事少、离家近、稳定。但你最多只能占两个。",
@@ -30,7 +30,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-003",
+    "id": "zx-jiuye-003",
     "type": "quote",
     "category": "就业",
     "text": "考公考编，是当代年轻人最大的确定性。别嫌弃体制内，等你35岁被裁员就知道了。",
@@ -46,7 +46,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-004",
+    "id": "zx-jiuye-004",
     "type": "quote",
     "category": "就业",
     "text": "你学了四年管理学，毕业去管谁？人家凭什么让你管？",
@@ -61,7 +61,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-005",
+    "id": "zx-jiuye-005",
     "type": "quote",
     "category": "就业",
     "text": "互联网行业的高薪是用青春换的。你能拼到35岁，然后呢？",
@@ -77,7 +77,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-006",
+    "id": "zx-jiuye-006",
     "type": "quote",
     "category": "就业",
     "text": "学技术的永远不会失业，因为社会永远需要能干活的人。",
@@ -92,7 +92,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-007",
+    "id": "zx-jiuye-007",
     "type": "quote",
     "category": "就业",
     "text": "第一份工作非常重要，它决定了你在哪个圈子、接触什么人、未来往哪个方向走。",
@@ -107,7 +107,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-008",
+    "id": "zx-jiuye-008",
     "type": "quote",
     "category": "就业",
     "text": "别光看平均薪资，你要看中位数。平均薪资是被马云拉上去的，跟你没关系。",
@@ -122,7 +122,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-009",
+    "id": "zx-jiuye-009",
     "type": "quote",
     "category": "就业",
     "text": "国企的好处不是工资高，是工资稳。你旱涝保收，过年有年终奖，退休有保障。",
@@ -137,7 +137,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-010",
+    "id": "zx-jiuye-010",
     "type": "quote",
     "category": "就业",
     "text": "私企给你画饼，国企给你发饼。你自己选。",
@@ -152,7 +152,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-011",
+    "id": "zx-jiuye-011",
     "type": "quote",
     "category": "就业",
     "text": "自媒体不是职业，是副业。你见过几个自媒体做了十年还活得好的？",
@@ -167,7 +167,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-012",
+    "id": "zx-jiuye-012",
     "type": "quote",
     "category": "就业",
     "text": "考研不是逃避就业的借口。你要想清楚，三年后就业环境会不会比现在更好？",
@@ -182,7 +182,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-013",
+    "id": "zx-jiuye-013",
     "type": "quote",
     "category": "就业",
     "text": "毕业去大城市还是回小城市？有能力去大城市，没关系回小城市。就这么简单。",
@@ -198,7 +198,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-014",
+    "id": "zx-jiuye-014",
     "type": "quote",
     "category": "就业",
     "text": "行业有周期，你得在上升期进去，别在下降期接盘。房地产、教培就是前车之鉴。",
@@ -213,7 +213,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-015",
+    "id": "zx-jiuye-015",
     "type": "quote",
     "category": "就业",
     "text": "女生就业确实比男生难，这是现实。所以女生更要选对专业，别让专业再给你加一道坎。",
@@ -228,7 +228,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-016",
+    "id": "zx-jiuye-016",
     "type": "quote",
     "category": "就业",
     "text": "起薪高不代表天花板高。有些行业起薪8000封顶一万，有些起薪5000但能到五万。看长远。",
@@ -243,7 +243,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-017",
+    "id": "zx-jiuye-017",
     "type": "quote",
     "category": "就业",
     "text": "海归也不值钱了。你花两百万出去留学，回来跟国内985抢同一个岗位，人家还嫌你不了解国内市场。",
@@ -258,7 +258,7 @@
     "scenario": "volunteer"
   },
   {
-    "id": "zxf-jiuye-018",
+    "id": "zx-jiuye-018",
     "type": "quote",
     "category": "就业",
     "text": "好的大专比烂的本科强。你学个护理、学个数控，出来就能上手干活，企业抢着要。",

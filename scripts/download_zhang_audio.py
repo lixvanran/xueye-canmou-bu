@@ -27,11 +27,11 @@ from pathlib import Path
 # Curated list of Zhang Xuefeng's public speeches
 # (B 站 BV 号, 标题, 时长, 备注)
 SPEECHES = [
-    ("BV1yb8izPEWW", "张雪峰封神演讲15分钟完整版 (2025-07-28)", "~15 min", "必听, 语速适中, 口音清晰"),
-    ("BV1HvYezAEUE", "张雪峰封神15分钟演讲完整版 (2025-08-18)", "~15 min", "语速快, 信息密度大"),
-    ("BV1R3hGzHE8u", "张雪峰演讲12分钟完整版 (2025-08-04)", "~12 min", "对话式, 节奏自然"),
-    ("BV1dwu6z1EVn", "张雪峰最震撼的一次封神演讲", "~17 min", "激情澎湃, 适合克隆声线"),
-    ("BV1Qx411H71k", "演说家: 张雪峰讲为什么考研 (2017-08-04)", "~15 min", "早期作品, 语速较慢"),
+    ("BV1yb8izPEWW", "张老师封神演讲15分钟完整版 (2025-07-28)", "~15 min", "必听, 语速适中, 口音清晰"),
+    ("BV1HvYezAEUE", "张老师封神15分钟演讲完整版 (2025-08-18)", "~15 min", "语速快, 信息密度大"),
+    ("BV1R3hGzHE8u", "张老师演讲12分钟完整版 (2025-08-04)", "~12 min", "对话式, 节奏自然"),
+    ("BV1dwu6z1EVn", "张老师最震撼的一次封神演讲", "~17 min", "激情澎湃, 适合克隆声线"),
+    ("BV1Qx411H71k", "演说家: 张老师讲为什么考研 (2017-08-04)", "~15 min", "早期作品, 语速较慢"),
 ]
 
 
@@ -124,15 +124,15 @@ def main():
         print("or concatenate them with ffmpeg:")
         print(f"  cd {out_dir}")
         print("  # Pick 30s-2min segment from the most clearly-spoken one")
-        print("  ffmpeg -i BV1yb8izPEWW.mp3 -ss 00:00:30 -t 00:01:30 zhangxuefeng.mp3")
+        print("  ffmpeg -i BV1yb8izPEWW.mp3 -ss 00:00:30 -t 00:01:30 teacher_zhang.mp3")
         print()
         print("Then run: python scripts/clone_zhang_voice.py")
     else:
         print()
         print("No videos downloaded. You can also download from:")
-        print("  - B 站 (https://www.bilibili.com) — search '张雪峰 演讲'")
-        print("  - 微博 (https://weibo.com) — search '张雪峰'")
-        print("  - 抖音 (https://www.douyin.com) — search '张雪峰'")
+        print("  - B 站 (https://www.bilibili.com) — search '张老师 演讲'")
+        print("  - 微博 (https://weibo.com) — search '张老师'")
+        print("  - 抖音 (https://www.douyin.com) — search '张老师'")
 
 
 if __name__ == "__main__":

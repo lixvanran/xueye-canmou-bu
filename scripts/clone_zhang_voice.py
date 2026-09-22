@@ -2,7 +2,7 @@
 """Clone Zhang Xuefeng's voice from a local audio sample.
 
 Usage:
-    1. Place a 30s-2min audio sample at samples/zhangxuefeng.mp3
+    1. Place a 30s-2min audio sample at samples/teacher_zhang.mp3
        (or .wav / .m4a)
     2. Run: python scripts/clone_zhang_voice.py
     3. The script uploads the sample, runs clone_voice, and writes the
@@ -37,7 +37,7 @@ def find_sample() -> Path:
             return f
     print(f"ERROR: No audio sample found in {SAMPLES_DIR}")
     print("Please place a 30s-2min audio file (mp3/wav/m4a) there, e.g.:")
-    print(f"  {SAMPLES_DIR}/zhangxuefeng.mp3")
+    print(f"  {SAMPLES_DIR}/teacher_zhang.mp3")
     sys.exit(1)
 
 
@@ -89,7 +89,7 @@ def main():
             headers={**headers, "Content-Type": "application/json"},
             json={
                 "file_id": file_id,
-                "voice_id": f"zhangxuefeng_{os.getpid()}",
+                "voice_id": f"teacher_zhang_{os.getpid()}",
                 "model": "speech-01",
                 "text": "同学们好，我是张老师，今天咱们来聊聊高考报志愿的事儿。",
             },

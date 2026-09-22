@@ -79,7 +79,7 @@ export default function ProfilePage() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-zxf-red to-orange-500 flex items-center justify-center text-white text-2xl font-bold">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-zx-red to-orange-500 flex items-center justify-center text-white text-2xl font-bold">
             {form.name?.[0] || '?'}
           </div>
           <div>
@@ -121,7 +121,7 @@ export default function ProfilePage() {
                     onClick={() => setForm({ ...form, education_stage: s.value })}
                     className={`p-2 text-xs rounded-lg border-2 transition-all ${
                       form.education_stage === s.value
-                        ? 'border-zxf-red bg-red-50 text-zxf-red'
+                        ? 'border-zx-red bg-red-50 text-zx-red'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -209,7 +209,7 @@ export default function ProfilePage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full py-3 bg-zxf-red text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 bg-zx-red text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Save size={18} />
               {saving ? '保存中...' : '保存信息'}

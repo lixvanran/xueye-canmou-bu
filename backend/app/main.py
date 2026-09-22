@@ -11,6 +11,7 @@ from app.db.database import UserPreferenceORM  # noqa: F401
 from app.routers import chat, resources, conversations, user, tts, workspace
 # v0.9.1: 修复 — 别名 import 避免覆盖 app.core.config.settings
 from app.routers import settings as settings_router
+from app.routers import api_key as api_key_router
 import logging
 import time
 
@@ -139,6 +140,9 @@ app.include_router(user.router)
 app.include_router(tts.router)
 app.include_router(workspace.router)
 app.include_router(settings_router.router)
+app.include_router(api_key_router.router)
+
+
 
 
 @app.get("/")

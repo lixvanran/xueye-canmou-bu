@@ -42,7 +42,7 @@ async def analyze_major(major_name: str) -> Dict:
         "overseas_rate": (found_db or {}).get("overseas_rate"),
         "job_directions": (found_db or {}).get("job_directions"),
         "description": (found_db or {}).get("description"),
-        "zxf_comment": (found_kb or {}).get("comment"),
+        "teacher_comment": (found_kb or {}).get("comment"),
         "warning": (found_kb or {}).get("warning"),
         "data_source": "db/majors.json (585个) + KB 03_majors.json (张老师点评)",
     }

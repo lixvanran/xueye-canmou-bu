@@ -114,10 +114,10 @@ export default function ResourcesPage() {
     aiAbortRef.current = ac
     try {
       const r = selected
-      // 模仿表达格式：标准模式走 AI 助教（无张雪峰人设）
-      // 张老师讲题模式：调用 deep_thinking，按张雪峰 persona 讲
+      // 模仿表达格式：标准模式走 AI 助教（无张老师人设）
+      // 张老师讲题模式：调用 deep_thinking，按张老师 persona 讲
       const userMsg = mode === 'zhang'
-        ? `看 ${r.code}: ${r.title}\n\n${r.content || ''}\n\n请用张雪峰老师讲题的方式一步步给我讲明白。先问家庭条件，再分析这道题为什么错，然后给出明确判断和"下次碰到同类型的题怎么办"。结尾必须给一句金句。`
+        ? `看 ${r.code}: ${r.title}\n\n${r.content || ''}\n\n请用张老师老师讲题的方式一步步给我讲明白。先问家庭条件，再分析这道题为什么错，然后给出明确判断和"下次碰到同类型的题怎么办"。结尾必须给一句金句。`
         : `错题 ${r.code}: ${r.title}\n\n题目: ${r.content || ''}\n\n请给出标准解答：1) 解题思路 2) 关键公式 3) 完整步骤 4) 答案 5) 同类题型的解法套路。`
       let full = ''
       for await (const ev of streamChat({
@@ -205,7 +205,7 @@ export default function ResourcesPage() {
         </div>
         <button
           onClick={() => setShowUpload(true)}
-          className="px-4 py-2 bg-zxf-red text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+          className="px-4 py-2 bg-zx-red text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
         >
           <Upload size={18} />
           <span>添加{activeTab === 'mistake' ? '错题' : '资料'}</span>
@@ -216,7 +216,7 @@ export default function ResourcesPage() {
         <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <div className="text-sm text-gray-500">总资料</div>
-            <div className="text-3xl font-bold text-zxf-red mt-1">{stats.total}</div>
+            <div className="text-3xl font-bold text-zx-red mt-1">{stats.total}</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <div className="text-sm text-gray-500">错题</div>
@@ -239,7 +239,7 @@ export default function ResourcesPage() {
             onClick={() => setActiveTab('mistake')}
             className={`flex-1 px-4 py-3 text-sm font-medium ${
               activeTab === 'mistake'
-                ? 'border-b-2 border-zxf-red text-zxf-red'
+                ? 'border-b-2 border-zx-red text-zx-red'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -265,7 +265,7 @@ export default function ResourcesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜索标题、内容、知识点、备注..."
-              className="w-full pl-9 pr-3 py-2 border rounded-lg focus:outline-none focus:border-zxf-red"
+              className="w-full pl-9 pr-3 py-2 border rounded-lg focus:outline-none focus:border-zx-red"
             />
           </div>
           <select
@@ -477,7 +477,7 @@ export default function ResourcesPage() {
 
               <div>
                 <label className="text-sm text-gray-600">附件</label>
-                <label className="mt-1 flex items-center justify-center border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-zxf-red">
+                <label className="mt-1 flex items-center justify-center border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-zx-red">
                   <input type="file"
                     onChange={(e) => setForm({ ...form, file: e.target.files?.[0] || null })}
                     className="hidden" />
@@ -499,7 +499,7 @@ export default function ResourcesPage() {
 
             <div className="flex gap-2 mt-6">
               <button onClick={() => setShowUpload(false)} className="flex-1 py-2 border rounded-lg hover:bg-gray-50">取消</button>
-              <button onClick={handleUpload} disabled={uploading} className="flex-1 py-2 bg-zxf-red text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
+              <button onClick={handleUpload} disabled={uploading} className="flex-1 py-2 bg-zx-red text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
                 {uploading ? '保存中...' : '保存'}
               </button>
             </div>
@@ -640,7 +640,7 @@ export default function ResourcesPage() {
               {editing ? (
                 <>
                   <button onClick={() => { setEditing(false); setEditForm(selected) }} className="flex-1 py-2 border rounded-lg hover:bg-gray-50">取消</button>
-                  <button onClick={handleSaveEdit} className="flex-1 py-2 bg-zxf-red text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2">
+                  <button onClick={handleSaveEdit} className="flex-1 py-2 bg-zx-red text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2">
                     <Save size={16} />保存
                   </button>
                 </>
@@ -683,7 +683,7 @@ export default function ResourcesPage() {
                   <button
                     onClick={() => handleAIExplain('zhang')}
                     disabled={aiStreaming && aiMode !== 'zhang'}
-                    className="px-3 py-1.5 bg-zxf-red text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                    className="px-3 py-1.5 bg-zx-red text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
                   >
                     {aiStreaming && aiMode === 'zhang' ? <Loader2 size={14} className="animate-spin" /> : <UserCircle2 size={14} />}
                     一键 张老师讲题
@@ -714,7 +714,7 @@ export default function ResourcesPage() {
                     <div className="flex items-center gap-2 mb-2">
                       {aiMode === 'zhang' ? (
                         <>
-                          <div className="w-6 h-6 rounded-full bg-zxf-red flex items-center justify-center text-white text-xs font-bold">张</div>
+                          <div className="w-6 h-6 rounded-full bg-zx-red flex items-center justify-center text-white text-xs font-bold">张</div>
                           <span className="text-sm font-semibold text-gray-700">张老师讲题</span>
                         </>
                       ) : (

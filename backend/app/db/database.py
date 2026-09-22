@@ -102,6 +102,27 @@ class UserPreferenceORM(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+# v0.9.9: 长期事实 (LLM 自动抽取的学生/用户信息)
+# 模仿人脑长期记忆: 不存对话原文, 存"高密度事实"
+class UserFactORM(Base):
+    __tablename__ = "user_facts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False, default=1)
+    # fact 类别: profile / preference / knowledge / mistake_pattern
+    category = Column(String(32), nullable=False, default="profile", index=True)
+    # 事实内容 (短句: "湖北高三, 620分, 物化生")
+    fact = Column(String(512), nullable=False)
+    # 重要性 0-1, 抽取时 LLM 评估
+    importance = Column(Float, nullable=False, default=0.5)
+    # 来源对话 id (可空, 让用户手动加的事实没来源)
+    source_conversation_id = Column(Integer, nullable=True)
+    # 是否过期 (LLM 标记"可能过期"的事实)
+    stale = Column(Integer, nullable=False, default=0)  # 0=active, 1=stale
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 # ========== Database setup ==========
 engine = create_engine(
     settings.DATABASE_URL,
@@ -148,6 +169,28 @@ def _migrate_if_needed():
                 conn.commit()
             except Exception as e:
                 logger.warning(f"Failed to create user_preferences: {e}")
+        # v0.9.9: 兜底 — user_facts 表
+        if 'user_facts' not in inspector.get_table_names():
+            logger.info("Schema migration: creating user_facts table")
+            try:
+                conn.execute(text("""
+                    CREATE TABLE user_facts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL DEFAULT 1,
+                        category VARCHAR(32) NOT NULL DEFAULT 'profile',
+                        fact VARCHAR(512) NOT NULL,
+                        importance FLOAT NOT NULL DEFAULT 0.5,
+                        source_conversation_id INTEGER,
+                        stale INTEGER NOT NULL DEFAULT 0,
+                        created_at DATETIME,
+                        updated_at DATETIME
+                    )
+                """))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_facts_user_id ON user_facts (user_id)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_facts_category ON user_facts (category)"))
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Failed to create user_facts: {e}")
     if 'resources' not in inspector.get_table_names():
         return  # 全新安装, 让 create_all 处理
     existing_cols = {c['name'] for c in inspector.get_columns('resources')}

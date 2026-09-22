@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     """App settings"""
 
     # App
-    APP_NAME: str = "ZhangXueFeng Agent"
-    APP_VERSION: str = "0.9.8"  # v0.9.8: 1 key 跑全部 + KB 集成 2 个开源 repo (124 篇内容)
+    APP_NAME: str = "张雪峰智能体"
+    APP_VERSION: str = "1.1.5"  # v1.1.5: 系统设置内填 API Key + 项目清理 + README 重写
     DEBUG: bool = True
 
     # Server
@@ -122,11 +122,11 @@ class Settings(BaseSettings):
 
     # ===== OpenRouter (optional) =====
     OPENROUTER_REFERER: str = "http://localhost:3000"
-    OPENROUTER_TITLE: str = "ZhangXueFeng-Agent"
+    OPENROUTER_TITLE: str = "AgentPlatform"
 
     # ===== Paths =====
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
-    PROJECT_ROOT: Path = BASE_DIR.parent  # 项目主目录 (zhangxuefeng-demo/)
+    PROJECT_ROOT: Path = BASE_DIR.parent  # 项目主目录 (teacher_zhang-demo/)
     DATA_DIR: Path = BASE_DIR / "data"
     KNOWLEDGE_BASE_DIR: Path = BASE_DIR / "knowledge_base"
     UPLOAD_DIR: Path = DATA_DIR / "uploads"

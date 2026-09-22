@@ -1,6 +1,6 @@
 {
-  "name": "zhangxuefeng-frontend",
-  "productName": "张雪峰智能体",
+  "name": "teacher_zhang-frontend",
+  "productName": "张老师智能体",
   "private": true,
   "version": "0.3.0",
   "description": "AI 备考与志愿填报助手",
@@ -45,8 +45,8 @@
     "vite": "^5.1.0"
   },
   "build": {
-    "appId": "com.Mavis.zhangxuefeng",
-    "productName": "张雪峰智能体",
+    "appId": "com.Mavis.teacher_zhang",
+    "productName": "张老师智能体",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -98,7 +98,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "张雪峰智能体"
+      "shortcutName": "张老师智能体"
     }
   }
 }

@@ -7,7 +7,7 @@ Zhang's real voice (you need a real sample for that), but it lets you
 test the clone_voice.py flow end-to-end.
 
 After running this script, you'll have samples/demo_voice.mp3 that you
-can copy to samples/zhangxuefeng.mp3 and then run clone_zhang_voice.py.
+can copy to samples/teacher_zhang.mp3 and then run clone_zhang_voice.py.
 
 Real usage: replace samples/demo_voice.mp3 with an actual Zhang Xuefeng
 sample (see samples/INSTRUCTIONS.md for how to get one).
@@ -110,7 +110,7 @@ def main():
     print("samples/INSTRUCTIONS.md for how to download a real sample.")
     print()
     print("To use this demo for testing the clone flow:")
-    print(f"  cp {out_mp3} {SAMPLES / 'zhangxuefeng.mp3'}")
+    print(f"  cp {out_mp3} {SAMPLES / 'teacher_zhang.mp3'}")
     print("  python scripts/clone_zhang_voice.py")
 
 

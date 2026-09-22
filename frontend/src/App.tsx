@@ -25,7 +25,6 @@ export default function App() {
         <div className="p-6 border-b border-black/5">
           <div>
             <h1 className="text-lg font-bold tracking-tight">张雪峰智能体</h1>
-            <p className="text-xs text-zinc-500">敢说真话的 AI 助手</p>
           </div>
         </div>
 
@@ -61,7 +60,7 @@ export default function App() {
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             <span>服务运行中</span>
           </div>
-          <div className="mt-1.5 text-zinc-400">v0.9.8</div>
+          <div className="mt-1.5 text-zinc-400">v1.1.5</div>
         </div>
       </aside>
 

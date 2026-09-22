@@ -42,7 +42,7 @@ async def wikipedia_search(query: str, max_results: int = 8, time_hint: dict = N
                     resp = await client.get(
                         endpoint,
                         params=params,
-                        headers={"User-Agent": "ZhangXueFengAgent/0.8 (educational; contact@example.com)"},
+                        headers={"User-Agent": "CoachAssistant/0.8 (educational; contact@example.com)"},
                     )
                 tried_endpoints.append(f"{lang}({resp.status_code})")
                 if resp.status_code != 200:
@@ -118,7 +118,7 @@ async def _enrich_with_extracts(results: list, max_results: int = 5) -> list:
                             "redirects": "1",  # 自动 follow 重定向
                             "titles": title,
                         },
-                        headers={"User-Agent": "ZhangXueFengAgent/0.8 (educational)"},
+                        headers={"User-Agent": "CoachAssistant/0.8 (educational)"},
                     )
                     if resp.status_code == 200:
                         data = resp.json()

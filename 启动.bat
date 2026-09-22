@@ -1,6 +1,6 @@
 @echo off
 REM ===========================================
-REM   ZhangXueFeng Agent - One-Click Launcher
+REM   ZhangXuefengAgent v1.1.5 - One-Click Launcher
 REM   NO chcp (causes flash close in Win11 Chinese)
 REM   Pure ASCII, no BOM
 REM ===========================================
@@ -9,7 +9,8 @@ cd /d "%~dp0"
 
 echo.
 echo ============================================
-echo   ZhangXueFeng Agent
+echo   ZhangXuefengAgent v1.1.5
+echo   (Local Agent Platform)
 echo ============================================
 echo.
 echo Working dir: %CD%
@@ -50,9 +51,9 @@ exit /b 1
 REM ===== Install backend deps if needed =====
 echo.
 echo [3/5] Checking backend dependencies (no actual import)...
-python -c "import importlib.util; m=['fastapi','uvicorn','openai','sqlalchemy','duckduckgo_search','bs4','dotenv','multipart','aiofiles','httpx','sse_starlette','pydantic_settings']; x=[n for n in m if importlib.util.find_spec(n) is None]; print('OK' if not x else 'MISS:'+','.join(x))" 2>nul > "%TEMP%\zxf-c.txt"
-set /p "CR=" < "%TEMP%\zxf-c.txt" >nul
-del "%TEMP%\zxf-c.txt" >nul 2>&1
+python -c "import importlib.util; m=['fastapi','uvicorn','openai','sqlalchemy','duckduckgo_search','bs4','dotenv','multipart','aiofiles','httpx','sse_starlette','pydantic_settings']; x=[n for n in m if importlib.util.find_spec(n) is None]; print('OK' if not x else 'MISS:'+','.join(x))" 2>nul > "%TEMP%\zx-c.txt"
+set /p "CR=" < "%TEMP%\zx-c.txt" >nul
+del "%TEMP%\zx-c.txt" >nul 2>&1
 if not "%CR%"=="OK" goto need_install_backend
 echo [OK] Already installed
 goto backend_done
@@ -60,7 +61,7 @@ goto backend_done
 :need_install_backend
 echo Installing backend dependencies (1-3 min)...
 python -m pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple >nul 2>&1
-python -m pip install -r backend\requirements.txt > "%TEMP%\zxf-backend.log" 2>&1
+python -m pip install -r backend\requirements.txt > "%TEMP%\zx-backend.log" 2>&1
 if errorlevel 1 goto backend_fail
 echo [OK] Backend deps installed
 goto backend_done
@@ -70,9 +71,9 @@ echo.
 echo [FAIL] Backend install error
 echo.
 echo Last 10 lines of log:
-powershell -Command "Get-Content '%TEMP%\zxf-backend.log' -Tail 10" 2>nul
+powershell -Command "Get-Content '%TEMP%\zx-backend.log' -Tail 10" 2>nul
 echo.
-echo Full log: %TEMP%\zxf-backend.log
+echo Full log: %TEMP%\zx-backend.log
 pause
 exit /b 1
 
@@ -107,7 +108,7 @@ if exist "frontend\node_modules" goto frontend_done
 echo Installing frontend dependencies (2-5 min)...
 call npm config set registry https://registry.npmmirror.com >nul 2>&1
 cd frontend
-call npm install --no-audit --no-fund --ignore-scripts > "%TEMP%\zxf-frontend.log" 2>&1
+call npm install --no-audit --no-fund --ignore-scripts > "%TEMP%\zx-frontend.log" 2>&1
 if errorlevel 1 goto frontend_fail
 cd ..
 echo [OK] Frontend deps installed
@@ -119,9 +120,9 @@ echo.
 echo [FAIL] Frontend install error
 echo.
 echo Last 10 lines of log:
-powershell -Command "Get-Content '%TEMP%\zxf-frontend.log' -Tail 10" 2>nul
+powershell -Command "Get-Content '%TEMP%\zx-frontend.log' -Tail 10" 2>nul
 echo.
-echo Full log: %TEMP%\zxf-frontend.log
+echo Full log: %TEMP%\zx-frontend.log
 pause
 exit /b 1
 
@@ -165,13 +166,13 @@ REM ===== Start backend =====
 echo.
 echo [START] Backend on port 8000...
 cd /d "%~dp0backend"
-start "ZXF-Backend" cmd /K "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+start "Agent-Backend" cmd /K "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 cd /d "%~dp0"
 
 REM ===== Start frontend =====
 echo [START] Frontend on port 3000...
 cd /d "%~dp0frontend"
-start "ZXF-Frontend" cmd /K "npm run dev"
+start "Agent-Frontend" cmd /K "npm run dev"
 cd /d "%~dp0"
 
 echo.
@@ -184,8 +185,8 @@ echo.
 echo       http://localhost:3000
 echo.
 echo   Two service windows should be open:
-echo     ZXF-Backend  (do not close)
-echo     ZXF-Frontend (do not close)
+echo     Agent-Backend  (do not close)
+echo     Agent-Frontend (do not close)
 echo.
 echo   To stop later, run the stop script.
 echo.

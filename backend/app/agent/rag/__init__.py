@@ -4,8 +4,8 @@
 - indexer.py: 向量化 (TF-IDF 简化版) + 知识库加载
 - ranker.py: cosine 相似度排序
 - boost.py: 实体 boost（省+年份直接命中）
-- engine.py: 入口 ZhangRAG, 对外暴露
+- engine.py: 入口 AgentRAG, 对外暴露
 """
-from app.agent.rag.engine import ZhangRAG, rag_engine, embedding_service
+from app.agent.rag.engine import AgentRAG, rag_engine, embedding_service
 
-__all__ = ["ZhangRAG", "rag_engine", "embedding_service"]
+__all__ = ["AgentRAG", "rag_engine", "embedding_service"]

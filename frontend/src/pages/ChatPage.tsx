@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, GraduationCap, MessageCircle, Target, Loader2, Plus, MessageSquare, Trash2, Volume2, Square, Paperclip, X, CheckCircle2 } from 'lucide-react'
+import { Send, GraduationCap, MessageCircle, Target, Loader2, Plus, MessageSquare, Trash2, Volume2, Square, Paperclip, X, CheckCircle2, BarChart3 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -195,6 +195,18 @@ export default function ChatPage() {
               newMsgs[newMsgs.length - 1] = {
                 ...newMsgs[newMsgs.length - 1],
                 rag_used: event.data,
+              }
+            }
+            return { messages: newMsgs }
+          })
+        } else if (event.type === 'rag_trace') {
+          // v0.1: RAG 全过程 trace
+          useAppStore.setState((state) => {
+            const newMsgs = [...state.messages]
+            if (newMsgs.length > 0) {
+              newMsgs[newMsgs.length - 1] = {
+                ...newMsgs[newMsgs.length - 1],
+                rag_trace: event.data,
               }
             }
             return { messages: newMsgs }
@@ -641,6 +653,36 @@ export default function ChatPage() {
                               </span>
                             ))}
                           </div>
+                        )}
+                        {/* v0.1: RAG 全过程 trace (折叠面板) */}
+                        {msg.rag_trace && (
+                          <details className="mt-2 text-xs">
+                            <summary className="cursor-pointer text-gray-500 hover:text-gray-700 flex items-center gap-1">
+                              <BarChart3 size={12} /> RAG 全过程 ({msg.rag_trace.stages?.length || 0} 步, {msg.rag_trace.latency_ms}ms)
+                            </summary>
+                            <div className="mt-2 p-2 bg-gray-50 rounded border space-y-2">
+                              {(msg.rag_trace.stages || []).map((stage: any, si: number) => (
+                                <div key={si} className="border-l-2 border-blue-400 pl-2">
+                                  <div className="font-medium text-gray-700">
+                                    {si + 1}. {stage.stage}
+                                    <span className="text-gray-400 ml-2 text-[10px]">+{Math.round(stage.timestamp_ms)}ms</span>
+                                  </div>
+                                  <div className="text-gray-500 text-[11px] mt-0.5">{stage.input_summary}</div>
+                                  <div className="text-gray-700 text-[11px]">→ {stage.output_summary}</div>
+                                  {stage.data && Object.keys(stage.data).length > 0 && (
+                                    <details className="mt-1">
+                                      <summary className="cursor-pointer text-[10px] text-gray-400 hover:text-gray-600">
+                                        详细数据
+                                      </summary>
+                                      <pre className="mt-1 p-1 bg-white rounded text-[10px] overflow-x-auto max-h-40 overflow-y-auto">
+                                        {JSON.stringify(stage.data, null, 2)}
+                                      </pre>
+                                    </details>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </details>
                         )}
                         {/* 朗读 按钮 (v0.9.8: 浏览器 Web Speech) */}
                         <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-2">

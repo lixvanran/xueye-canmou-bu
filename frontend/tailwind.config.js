@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        zxf: {
+        teacher: {
           red: '#D32F2F',
           dark: '#1A1A1A',
           gold: '#FFA000',

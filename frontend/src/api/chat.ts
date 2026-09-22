@@ -12,7 +12,7 @@ export interface ChatParams {
 }
 
 export type StreamEventType =
-  | 'content' | 'rag' | 'route' | 'tools' | 'search_results' | 'reasoning' | 'thinking' | 'stopped'
+  | 'content' | 'rag' | 'rag_trace' | 'route' | 'tools' | 'search_results' | 'reasoning' | 'thinking' | 'stopped'
 
 export interface StreamEvent {
   type: StreamEventType
@@ -70,6 +70,18 @@ export async function* streamChat(
           if (parsed.content.includes('[RAG]') && parsed.content.includes('[/RAG]')) {
             const m = parsed.content.match(/\[RAG\](.*?)\[\/RAG\]/)
             if (m) { yield { type: 'rag', data: JSON.parse(m[1]) }; continue }
+          }
+          // v0.1: RAG 全过程 trace
+          if (parsed.content.includes('[RAG_TRACE]') && parsed.content.includes('[/RAG_TRACE]')) {
+            const m = parsed.content.match(/\[RAG_TRACE\](.*?)\[\/RAG_TRACE\]/)
+            if (m) {
+              try {
+                yield { type: 'rag_trace', data: JSON.parse(m[1]) }
+              } catch (e) {
+                console.error('RAG_TRACE parse failed', e)
+              }
+              continue
+            }
           }
           if (parsed.content.includes('[ROUTE]') && parsed.content.includes('[/ROUTE]')) {
             const m = parsed.content.match(/\[ROUTE\](.*?)\[\/ROUTE\]/)

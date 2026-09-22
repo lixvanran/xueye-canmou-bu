@@ -69,11 +69,16 @@ class AgentOrchestrator:
         self.memory.maybe_update_title(conv_id, user_message)
 
         # 1) 拼 context (含 history, 用于路由评估)
+        # v0.1: 创建 RAG tracer, 记录全过程
+        from app.rag.tracer import make_tracer
+        tracer = make_tracer(user_message)
+
         ctx = await build_messages(
             user_message, scenario, user_id, self.memory,
             conversation_id=conv_id,
             web_search_enabled=web_search_enabled,
             deep_thinking_enabled=deep_thinking_enabled,
+            tracer=tracer,
         )
 
         # 2) 路由选模型 (走 routing 模块)
@@ -115,12 +120,19 @@ class AgentOrchestrator:
             tool_calls=json.dumps(result["tool_calls"], ensure_ascii=False) if result["tool_calls"] else None,
         )
 
+        # v0.9.9: 异步抽取长期事实 (fire-and-forget, 不阻塞返回)
+        import asyncio
+        asyncio.create_task(self._extract_facts_async(
+            user_message, result["content"], user_id, conv_id
+        ))
+
         return {
             "conversation_id": conv_id,
             "content": result["content"],
             "reasoning": result["reasoning"],
             "tool_calls": result["tool_calls"],
             "rag_used": ctx["rag_summary"],
+            "rag_trace": ctx.get("rag_trace"),  # v0.1
             "route": {
                 "complexity": route["complexity"],
                 "model": result.get("model_used", route["primary_model"]),
@@ -149,11 +161,16 @@ class AgentOrchestrator:
         self.memory.maybe_update_title(conv_id, user_message)
 
         # 1) 拼 context
+        # v0.1: 创建 RAG tracer, 记录全过程
+        from app.rag.tracer import make_tracer
+        tracer = make_tracer(user_message)
+
         ctx = await build_messages(
             user_message, scenario, user_id, self.memory,
             conversation_id=conv_id,
             web_search_enabled=web_search_enabled,
             deep_thinking_enabled=deep_thinking_enabled,
+            tracer=tracer,
         )
 
         # 2) 路由选模型 (走 routing 模块)
@@ -172,6 +189,9 @@ class AgentOrchestrator:
 
         # 3) 先发 RAG summary
         yield f"[RAG]{json.dumps(ctx['rag_summary'], ensure_ascii=False)}[/RAG]\n\n"
+        # v0.1: 发完整 RAG trace (全过程)
+        if ctx.get("rag_trace"):
+            yield f"[RAG_TRACE]{json.dumps(ctx['rag_trace'], ensure_ascii=False)}[/RAG_TRACE]\n\n"
 
         # 4) 发路由信息
         route_info = {
@@ -228,6 +248,30 @@ class AgentOrchestrator:
 
 
 orchestrator = AgentOrchestrator()
+
+
+# ===== v0.9.9: 长期事实异步抽取 (orchestrator 辅助方法) =====
+async def _extract_facts_async(self_or_orch, user_message: str, assistant_message: str,
+                                user_id: int, conv_id: int):
+    """异步从对话抽取事实, 存到 user_facts. 失败不影响主流程."""
+    try:
+        from app.agent.memory.fact_extractor import extract_facts_from_conversation
+        from app.db.database import SessionLocal
+        db = SessionLocal()
+        try:
+            facts = await extract_facts_from_conversation(
+                user_message, assistant_message,
+                user_id=user_id, conversation_id=conv_id, db=db,
+            )
+            if facts:
+                logger.info(f"[v0.9.9 fact extract] conv={conv_id} → {len(facts)} facts")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning(f"[v0.9.9 fact extract] failed: {e}")
+
+
+AgentOrchestrator._extract_facts_async = _extract_facts_async
 
 
 # ===== v0.8.0: Deep thinking 专用 helpers =====

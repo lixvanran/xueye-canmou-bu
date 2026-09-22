@@ -78,7 +78,7 @@ def test_key(key: str) -> int:
         print("  1. 去 https://openrouter.ai/keys 看 key 列表")
         print("  2. 如果列表为空 → 点 'Create Key' 新建一个, 复制完整的 key")
         print("  3. 如果列表有这个 key 但验证失败 → 联系 OpenRouter support")
-        print("  4. 把新 key 填到 zhangxuefeng-demo/.env 的 LLM_API_KEY= 后面")
+        print("  4. 把新 key 填到 teacher_zhang-demo/.env 的 LLM_API_KEY= 后面")
         print("  5. 重启 启动.bat")
         return 1
     else:
