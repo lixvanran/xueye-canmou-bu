@@ -7,13 +7,43 @@ v2.0:
 - GET /api/user/profile-view 返回"AI 怎么理解我"的衍生指令预览
 - GET /api/user/export / POST /api/user/import (数据导出导入)
 - 导出/导入包含 schedules (v2.0 兼容 backend-architecture task)
+v0.1.6 修复:
+- update_profile 改用 Pydantic ProfileUpdate body 模型, 修复 agent_name 等字段无法通过 body 保存的 bug (FastAPI 默认从 query 取基础类型参数)
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from app.db.database import get_db, UserORM, ScheduleORM
+from pydantic import BaseModel, Field
 from typing import Optional
 
 router = APIRouter(prefix="/api/user", tags=["用户"])
+
+
+class ProfileUpdate(BaseModel):
+    """v0.1.6: 完整 profile 更新 body (前端 PUT 用 body 传, 之前用 query 是 bug)"""
+    # v2.0 核心字段
+    name: Optional[str] = None
+    stage: Optional[str] = None                # 中文友好学段
+    subject_choice: Optional[str] = None       # 选科
+    target_school: Optional[str] = None        # 目标院校
+    target_major: Optional[str] = None         # 目标专业
+    interest: Optional[str] = None             # 兴趣方向
+    notes: Optional[str] = None                # 备注
+    agent_name: Optional[str] = None           # Agent 称呼
+    direction: Optional[str] = None            # 目标方向
+    language: Optional[str] = None             # 语言偏好
+    # 兼容老字段
+    education_stage: Optional[str] = None
+    province: Optional[str] = None
+    score: Optional[int] = None
+    rank: Optional[int] = None
+    target: Optional[str] = None
+    interests: Optional[str] = None
+    background: Optional[str] = None
+    # v0.1.6 补充: 之前完全没保存的几个新字段
+    home_address: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    birthday: Optional[str] = None
 
 
 # ========== Profile (字段精简版) ==========
@@ -49,27 +79,30 @@ async def get_profile(user_id: int = 1, db: Session = Depends(get_db)):
 
 @router.put("/profile")
 async def update_profile(
-    name: Optional[str] = None,
-    stage: Optional[str] = None,                # v2.0: 中文友好学段
-    subject_choice: Optional[str] = None,       # v2.0: 选科
-    target_school: Optional[str] = None,        # v2.0: 目标院校 (独立字段, 不挤 target)
-    target_major: Optional[str] = None,         # v2.0: 目标专业
-    interest: Optional[str] = None,             # v2.0: 兴趣方向
-    notes: Optional[str] = None,                # v2.0: 备注 (替代老 background)
-    agent_name: Optional[str] = None,           # v2.0: Agent 称呼
-    # 兼容老字段 — 可继续传, 不传不更新
-    education_stage: Optional[str] = None,
-    province: Optional[str] = None,
-    score: Optional[int] = None,
-    rank: Optional[int] = None,
-    target: Optional[str] = None,
-    interests: Optional[str] = None,
-    background: Optional[str] = None,
-    direction: Optional[str] = None,
-    language: Optional[str] = None,
+    payload: ProfileUpdate = Body(default_factory=ProfileUpdate),
     user_id: int = 1,
     db: Session = Depends(get_db),
 ):
+    """v0.1.6 修复: 用 ProfileUpdate body 接受 PUT, 不再用 query params
+    (FastAPI 默认从 query 提取基础类型参数, 前端 PUT body 永远落不到 update 逻辑)"""
+    # 解构 body
+    name = payload.name
+    stage = payload.stage
+    subject_choice = payload.subject_choice
+    target_school = payload.target_school
+    target_major = payload.target_major
+    interest = payload.interest
+    notes = payload.notes
+    agent_name = payload.agent_name
+    education_stage = payload.education_stage
+    province = payload.province
+    score = payload.score
+    rank = payload.rank
+    target = payload.target
+    interests = payload.interests
+    background = payload.background
+    direction = payload.direction
+    language = payload.language
     """Update user profile. ALL fields optional."""
     user = db.query(UserORM).filter_by(id=user_id).first()
     if not user:

@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { Upload, Trash2, Search, BookOpen, AlertCircle, CheckCircle, X, FileText, Edit3, Save, Sparkles, UserCircle2, Loader2, Star } from 'lucide-react'
+import { Upload, Trash2, Search, BookOpen, AlertCircle, CheckCircle, X, FileText, Edit3, Save, Sparkles, UserCircle2, Loader2, Star, Package, ListChecks } from 'lucide-react'
 import {
   listResources, createResource, deleteResource, getResource,
   updateResource, markResourceMastered, getResourceStats, listKnowledgeTags,
 } from '@/api'
-import { streamExplainMistake } from '@/api/workspace'
+import { streamExplainMistake, getWeakTopics } from '@/api/workspace'
 import type { Resource, ResourceType } from '@/types'
 
 const subjects = ['数学', '语文', '英语', '物理', '化学', '生物', '历史', '地理', '政治', '计算机', '其他']
@@ -51,6 +51,10 @@ export default function ResourcesPage() {
 
   // Detail view
   const [selected, setSelected] = useState<Resource | null>(null)
+  // v0.1.6: 一键整理
+  const [organizing, setOrganizing] = useState(false)
+  const [organizeResult, setOrganizeResult] = useState<any>(null)
+  const [showOrganizeModal, setShowOrganizeModal] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState<Partial<Resource>>({})
 
@@ -245,6 +249,24 @@ export default function ResourcesPage() {
     }
   }
 
+  // v0.1.6: 一键整理 — 调 weak-topics 分析薄弱点 + 显示整理报告
+  const handleOrganize = async () => {
+    if (!stats?.by_type?.mistake) {
+      alert('暂无错题可以整理。先添加几个错题吧！')
+      return
+    }
+    setOrganizing(true)
+    try {
+      const result = await getWeakTopics(1, 10)
+      setOrganizeResult(result)
+      setShowOrganizeModal(true)
+    } catch (e: any) {
+      alert('整理失败: ' + (e?.message || '?'))
+    } finally {
+      setOrganizing(false)
+    }
+  }
+
   return (
     <div className="h-full overflow-y-auto p-6">
       <div className="flex items-center justify-between mb-6">
@@ -252,13 +274,25 @@ export default function ResourcesPage() {
           <h1 className="text-2xl font-bold text-gray-800">资料库</h1>
           <p className="text-sm text-gray-500 mt-1">错题 + 学习资料 · 张老师会读取它们来帮你</p>
         </div>
-        <button
-          onClick={() => setShowUpload(true)}
-          className="px-4 py-2 bg-zx-red text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
-        >
-          <Upload size={18} />
-          <span>添加{activeTab === 'mistake' ? '错题' : '资料'}</span>
-        </button>
+        <div className="flex gap-2">
+          {/* v0.1.6: 一键整理 — 调 weak-topics 自动分析薄弱点 */}
+          <button
+            onClick={handleOrganize}
+            disabled={organizing}
+            className="px-4 py-2 bg-white border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 disabled:opacity-50 flex items-center gap-2"
+            title="按知识点 / 学科自动整理错题, 生成薄弱点报告"
+          >
+            {organizing ? <Loader2 size={18} className="animate-spin" /> : <Package size={18} />}
+            <span>一键整理</span>
+          </button>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="px-4 py-2 bg-zx-red text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+          >
+            <Upload size={18} />
+            <span>添加{activeTab === 'mistake' ? '错题' : '资料'}</span>
+          </button>
+        </div>
       </div>
 
       {stats && (
@@ -451,9 +485,24 @@ export default function ResourcesPage() {
       {showUpload && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">添加{activeTab === 'mistake' ? '错题' : '学习资料'}</h3>
-              <button onClick={() => setShowUpload(false)}><X size={20} /></button>
+            {/* v0.1.6: 顶部 sticky 保存条 — 用户随时能看到保存按钮 */}
+            <div className="sticky -top-6 -mx-6 px-6 bg-white border-b border-gray-200 pb-3 mb-4 z-10">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold">添加{activeTab === 'mistake' ? '错题' : '学习资料'}</h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleUpload}
+                    disabled={uploading}
+                    className="px-4 py-1.5 bg-zx-red text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {uploading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    保存
+                  </button>
+                  <button onClick={() => setShowUpload(false)} className="p-1.5 hover:bg-gray-100 rounded">
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -613,9 +662,27 @@ export default function ResourcesPage() {
                 <h3 className="text-lg font-bold">{editing ? '编辑' : ''}{selected.title}</h3>
               </div>
               <div className="flex items-center gap-2">
-                {!editing && (
-                  <button onClick={() => setEditing(true)} className="p-2 hover:bg-gray-100 rounded" title="编辑">
-                    <Edit3 size={16} />
+                {!editing ? (
+                  <>
+                    {/* v0.1.6: 顶部"保存编辑"按钮 — 滚动到底也能随时点 */}
+                    {activeTab === 'mistake' && (
+                      <button
+                        onClick={() => setEditing(true)}
+                        className="px-3 py-1 bg-zx-red text-white text-xs rounded-lg hover:bg-red-700 flex items-center gap-1"
+                      >
+                        <Edit3 size={12} />编辑
+                      </button>
+                    )}
+                    <button onClick={() => setEditing(true)} className="p-2 hover:bg-gray-100 rounded" title="编辑">
+                      <Edit3 size={16} />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleSaveEdit}
+                    className="px-3 py-1 bg-zx-red text-white text-xs rounded-lg hover:bg-red-700 flex items-center gap-1"
+                  >
+                    <Save size={12} />保存
                   </button>
                 )}
                 <button onClick={() => { setSelected(null); setEditing(false) }}>
@@ -857,6 +924,115 @@ export default function ResourcesPage() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* v0.1.6: 一键整理结果 modal */}
+      {showOrganizeModal && organizeResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b">
+              <div className="flex items-center gap-2">
+                <Package size={20} className="text-purple-600" />
+                <h3 className="text-lg font-bold">一键整理报告</h3>
+              </div>
+              <button onClick={() => setShowOrganizeModal(false)} className="p-1 hover:bg-gray-100 rounded">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* 概览 */}
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="text-xs text-blue-700">错题总数</div>
+                <div className="text-2xl font-bold text-blue-900 mt-1">{organizeResult.total_mistakes}</div>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <div className="text-xs text-orange-700">未掌握</div>
+                <div className="text-2xl font-bold text-orange-900 mt-1">{organizeResult.unmastered_count}</div>
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div className="text-xs text-purple-700">薄弱知识点</div>
+                <div className="text-2xl font-bold text-purple-900 mt-1">{organizeResult.weak_topics?.length || 0}</div>
+              </div>
+            </div>
+
+            {/* 薄弱知识点列表 */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                <ListChecks size={14} />
+                优先复习这些知识点 (按错题数排序)
+              </h4>
+              {organizeResult.weak_topics?.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  <CheckCircle size={40} className="mx-auto mb-2 text-green-500" />
+                  <div className="text-sm">太棒了! 没有明显薄弱点</div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {organizeResult.weak_topics.map((wt: any, i: number) => (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                        i === 0 ? 'bg-red-500 text-white' :
+                        i === 1 ? 'bg-orange-500 text-white' :
+                        i === 2 ? 'bg-yellow-500 text-white' :
+                        'bg-gray-300 text-gray-700'
+                      }`}>
+                        {i + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">{wt.topic || wt.knowledge_point || wt.name}</div>
+                        {wt.subject && (
+                          <div className="text-xs text-gray-500 mt-0.5">学科: {wt.subject}</div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-red-600">{wt.count || wt.mistake_count || 0}</div>
+                        <div className="text-xs text-gray-500">错题数</div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setFilterKnowledgeTag(wt.topic || wt.knowledge_point || wt.name || '')
+                          setShowOrganizeModal(false)
+                        }}
+                        className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
+                      >
+                        查看
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 行动建议 */}
+            <div className="mt-5 pt-4 border-t">
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-xs text-purple-900 space-y-1">
+                <div className="font-medium">建议下一步:</div>
+                <div>1. 优先攻克排名 1-3 的薄弱知识点 (点击右侧"查看"跳到列表)</div>
+                <div>2. 让 Agent 帮你安排学习计划: 答疑 tab 点 "帮我安排学习计划"</div>
+                <div>3. 每天复习 1-2 个, 错题掌握后勾选 ✓ (掌握度)</div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5 pt-4 border-t">
+              <button
+                onClick={() => setShowOrganizeModal(false)}
+                className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
+              >
+                关闭
+              </button>
+              <button
+                onClick={() => {
+                  setShowOrganizeModal(false)
+                  window.dispatchEvent(new CustomEvent('navigate', { detail: { page: 'chat', tab: 'chat' } }))
+                }}
+                className="flex-1 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
+              >
+                让 Agent 安排计划 →
+              </button>
+            </div>
           </div>
         </div>
       )}

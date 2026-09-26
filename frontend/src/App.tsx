@@ -61,9 +61,10 @@ export default function App() {
       {/* 苹果风毛玻璃 sidebar */}
       <aside className="w-64 apple-glass-strong flex flex-col z-10">
         <div className="p-6 border-b border-black/5">
-          <h1 className="text-lg font-bold tracking-tight">智能体</h1>
+          {/* v0.1.6: 主页标题用 useAgentName, 自定义名字全屏统一 */}
+          <h1 className="text-lg font-bold tracking-tight">{agentName}</h1>
           <div className="text-xs text-zinc-500 mt-1">
-            当前: {agentName}
+            智能体 · 当前称呼
           </div>
         </div>
 
