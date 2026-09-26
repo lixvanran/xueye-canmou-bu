@@ -1,17 +1,17 @@
-/** SettingsModal - v0.9.1 新增
+/** SettingsModal - v0.9.1 新增, v2.0 增强
 - 替代原 DiagnoseModal
-- 3 个 tab: API 状态 / 模型选择 / 消费
-- API 状态: 原 DiagnoseModal 的功能
-- 模型选择: 让用户从白名单里选 low/mid/high 档模型
-- 消费: 查 OpenRouter 余额
+- 4 个 tab: API Key / API 状态 / 模型选择 / 消费
+- v2.0: key tab 加 Agent 称呼 文本框, 加 2 个 disabled 占位按钮
 */
 import { useState, useEffect } from 'react'
 import {
   Settings, RefreshCw, CheckCircle2, XCircle, AlertTriangle,
   ExternalLink, Copy, X, Zap, ChevronDown, ChevronRight,
-  Server, Activity, Wallet, Save, Loader2, Key, Eye, EyeOff, Trash2
+  Server, Activity, Wallet, Save, Loader2, Key, Eye, EyeOff, Trash2,
+  Mic, Music2, Sparkles
 } from 'lucide-react'
 import api from '@/api/client'
+import { useAgentName } from '@/hooks/useAgentName'
 
 // ===== 类型 =====
 
@@ -192,6 +192,32 @@ function ApiKeyTab({ onKeyUpdated }: { onKeyUpdated: () => void }) {
   const [showKey, setShowKey] = useState(false)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [testResult, setTestResult] = useState<any>(null)
+
+  // v2.0: Agent 称呼 (联动 useAgentName)
+  const [agentName, setAgentName, reloadAgentName] = useAgentName()
+  const [agentNameInput, setAgentNameInput] = useState(agentName)
+  const [agentNameSaving, setAgentNameSaving] = useState(false)
+  const [agentNameMsg, setAgentNameMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+
+  useEffect(() => {
+    setAgentNameInput(agentName)
+  }, [agentName])
+
+  const handleSaveAgentName = async () => {
+    setAgentNameSaving(true)
+    setAgentNameMsg(null)
+    try {
+      await setAgentName(agentNameInput)
+      await reloadAgentName()
+      setAgentNameMsg({ type: 'ok', text: `已保存: ${agentNameInput.trim() || '张老师'}` })
+      setTimeout(() => setAgentNameMsg(null), 2500)
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail || e?.message || '保存失败'
+      setAgentNameMsg({ type: 'err', text: `保存失败: ${detail}` })
+    } finally {
+      setAgentNameSaving(false)
+    }
+  }
 
   const loadStatus = async () => {
     setLoading(true)
@@ -399,6 +425,69 @@ function ApiKeyTab({ onKeyUpdated }: { onKeyUpdated: () => void }) {
           )}
         </div>
       )}
+
+      {/* v2.0: Agent 称呼 + 2 个 disabled 占位按钮 */}
+      <div className="border-t border-black/5 pt-4 space-y-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+            <Sparkles size={14} className="text-amber-500" />
+            Agent 称呼
+            <span className="text-xs text-gray-400 font-normal">(Agent 自我介绍时使用)</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={agentNameInput}
+              onChange={(e) => setAgentNameInput(e.target.value)}
+              placeholder="张老师"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              disabled={agentNameSaving}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSaveAgentName() }}
+            />
+            <button
+              onClick={handleSaveAgentName}
+              disabled={agentNameSaving}
+              className="px-4 py-2 text-sm bg-amber-500 text-white rounded-md hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              {agentNameSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              保存
+            </button>
+          </div>
+          {agentNameMsg && (
+            <div
+              className={`mt-2 rounded-md p-2 text-sm border ${
+                agentNameMsg.type === 'ok'
+                  ? 'bg-green-50 border-green-200 text-green-800'
+                  : 'bg-red-50 border-red-200 text-red-800'
+              }`}
+            >
+              {agentNameMsg.text}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-2">
+          <div className="text-sm font-medium text-gray-700 mb-2">个性化 (即将推出)</div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              disabled
+              title="即将推出"
+              className="opacity-50 cursor-not-allowed inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-md border border-gray-200"
+            >
+              <Mic size={12} />
+              上传语音样本 (.wav)
+            </button>
+            <button
+              disabled
+              title="即将推出"
+              className="opacity-50 cursor-not-allowed inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-md border border-gray-200"
+            >
+              <Music2 size={12} />
+              选择背景音乐
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* 流程说明 */}
       <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 space-y-1">
