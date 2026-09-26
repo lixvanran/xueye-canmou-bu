@@ -20,19 +20,17 @@ router = APIRouter(prefix="/api/user", tags=["用户"])
 
 
 class ProfileUpdate(BaseModel):
-    """v0.1.6: 完整 profile 更新 body (前端 PUT 用 body 传, 之前用 query 是 bug)"""
-    # v2.0 核心字段
+    """v0.1.6: profile 更新 body (前端 PUT 用 body 传, 之前用 query 是 bug)
+    字段只列 UserORM 实际存在的列; 没列的字段(target_school/target_major/notes 等)通过
+    target/background 字段兼容存 (前端可继续传, 后端忽略或拼接)。"""
+    # v2.0 核心字段 (UserORM 都有列)
     name: Optional[str] = None
     stage: Optional[str] = None                # 中文友好学段
-    subject_choice: Optional[str] = None       # 选科
-    target_school: Optional[str] = None        # 目标院校
-    target_major: Optional[str] = None         # 目标专业
-    interest: Optional[str] = None             # 兴趣方向
-    notes: Optional[str] = None                # 备注
+    interest: Optional[str] = None             # 兴趣方向 (存到 interests 字段)
     agent_name: Optional[str] = None           # Agent 称呼
     direction: Optional[str] = None            # 目标方向
     language: Optional[str] = None             # 语言偏好
-    # 兼容老字段
+    # 老字段 (UserORM 有列)
     education_stage: Optional[str] = None
     province: Optional[str] = None
     score: Optional[int] = None
@@ -40,10 +38,6 @@ class ProfileUpdate(BaseModel):
     target: Optional[str] = None
     interests: Optional[str] = None
     background: Optional[str] = None
-    # v0.1.6 补充: 之前完全没保存的几个新字段
-    home_address: Optional[str] = None
-    emergency_contact: Optional[str] = None
-    birthday: Optional[str] = None
 
 
 # ========== Profile (字段精简版) ==========
@@ -84,66 +78,48 @@ async def update_profile(
     db: Session = Depends(get_db),
 ):
     """v0.1.6 修复: 用 ProfileUpdate body 接受 PUT, 不再用 query params
-    (FastAPI 默认从 query 提取基础类型参数, 前端 PUT body 永远落不到 update 逻辑)"""
-    # 解构 body
-    name = payload.name
-    stage = payload.stage
-    subject_choice = payload.subject_choice
-    target_school = payload.target_school
-    target_major = payload.target_major
-    interest = payload.interest
-    notes = payload.notes
-    agent_name = payload.agent_name
-    education_stage = payload.education_stage
-    province = payload.province
-    score = payload.score
-    rank = payload.rank
-    target = payload.target
-    interests = payload.interests
-    background = payload.background
-    direction = payload.direction
-    language = payload.language
-    """Update user profile. ALL fields optional."""
+    (FastAPI 默认从 query 提取基础类型参数, 前端 PUT body 永远落不到 update 逻辑)
+    Update user profile. ALL fields optional.
+    v0.1.6 二次修复: ProfileUpdate 只保留 UserORM 实际有列的字段; 老字段兼容."""
     user = db.query(UserORM).filter_by(id=user_id).first()
     if not user:
-        user = UserORM(id=user_id, name=name or "Student")
+        user = UserORM(id=user_id, name=payload.name or "Student")
         db.add(user)
         db.flush()
 
-    # v2.0 新字段
-    if name is not None:
-        user.name = name
-    if stage is not None:
-        user.stage = stage or "高中"
+    # v2.0 新字段 (UserORM 实际有列)
+    if payload.name is not None:
+        user.name = payload.name
+    if payload.stage is not None:
+        user.stage = payload.stage or "高中"
         # 同步到老字段 education_stage, 让下游 system_prompt 仍能工作
-        user.education_stage = _stage_to_education_stage(stage)
-    if subject_choice is not None:
-        # 没有独立列, 塞 target (但 target_school 优先, 这里用 interests)
-        pass  # 暂存 interests, 或后续加列
-    if interest is not None:
-        user.interests = interest or None
-    if agent_name is not None:
-        user.agent_name = agent_name or "张老师"
-    if direction is not None:
-        user.direction = direction or ""
-    if language is not None:
-        user.language = language or "中文"
+        user.education_stage = _stage_to_education_stage(payload.stage)
+    if payload.interest is not None:
+        # 兴趣方向存到 interests 字段 (UserORM 没独立 interest 列)
+        user.interests = payload.interest or None
+    if payload.agent_name is not None:
+        # 核心修复目标 — 前端 PUT body 现在能正确保存
+        user.agent_name = payload.agent_name or "张老师"
+    if payload.direction is not None:
+        user.direction = payload.direction or ""
+    if payload.language is not None:
+        user.language = payload.language or "中文"
 
     # 老字段 (保持兼容)
-    if education_stage is not None:
-        user.education_stage = education_stage
-    if province is not None:
-        user.province = province or None
-    if score is not None:
-        user.score = score
-    if rank is not None:
-        user.rank = rank
-    if target is not None:
-        user.target = target or None
-    if interests is not None:
-        user.interests = interests or None
-    if background is not None:
-        user.background = background or None
+    if payload.education_stage is not None:
+        user.education_stage = payload.education_stage
+    if payload.province is not None:
+        user.province = payload.province or None
+    if payload.score is not None:
+        user.score = payload.score
+    if payload.rank is not None:
+        user.rank = payload.rank
+    if payload.target is not None:
+        user.target = payload.target or None
+    if payload.interests is not None:
+        user.interests = payload.interests or None
+    if payload.background is not None:
+        user.background = payload.background or None
 
     db.commit()
     db.refresh(user)

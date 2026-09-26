@@ -664,15 +664,13 @@ export default function ResourcesPage() {
               <div className="flex items-center gap-2">
                 {!editing ? (
                   <>
-                    {/* v0.1.6: 顶部"保存编辑"按钮 — 滚动到底也能随时点 */}
-                    {activeTab === 'mistake' && (
-                      <button
-                        onClick={() => setEditing(true)}
-                        className="px-3 py-1 bg-zx-red text-white text-xs rounded-lg hover:bg-red-700 flex items-center gap-1"
-                      >
-                        <Edit3 size={12} />编辑
-                      </button>
-                    )}
+                    {/* v0.1.6: 顶部"编辑"按钮 (显眼版, 不只依赖右下角 Edit3 图标) */}
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="px-3 py-1 bg-zx-red text-white text-xs rounded-lg hover:bg-red-700 flex items-center gap-1"
+                    >
+                      <Edit3 size={12} />编辑
+                    </button>
                     <button onClick={() => setEditing(true)} className="p-2 hover:bg-gray-100 rounded" title="编辑">
                       <Edit3 size={16} />
                     </button>
@@ -1026,7 +1024,8 @@ export default function ResourcesPage() {
               <button
                 onClick={() => {
                   setShowOrganizeModal(false)
-                  window.dispatchEvent(new CustomEvent('navigate', { detail: { page: 'chat', tab: 'chat' } }))
+                  // 提示用户去 ChatPage; 不跨组件操作状态 (避免耦合)
+                  alert('请去左侧"会话"页, 答疑 tab 点"帮我安排学习计划"')
                 }}
                 className="flex-1 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
               >
