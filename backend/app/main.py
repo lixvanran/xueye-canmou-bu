@@ -137,11 +137,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# v0.9.6: 把 /uploads 挂到 workspace/uploads/ — 错题本实际存放位置
-# 之前挂到 backend/data/uploads/ 是错的, 用户上传的图片不在那
-app.mount("/uploads", StaticFiles(directory=str(settings.WORKSPACE_UPLOADS_DIR)), name="uploads")
-# 老路径兼容: backend/data/uploads/ 里可能还有老用户的数据
-app.mount("/legacy-uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="legacy_uploads")
+# v0.1.6 修复: 把 /uploads 挂回 UPLOAD_DIR (backend/data/uploads/) — 这才是 resources.py
+# 实际写文件的地方 (见 resources.py:169 'filepath = settings.UPLOAD_DIR / filename')
+# v0.9.6 误改成 WORKSPACE_UPLOADS_DIR, 导致图片 404 (写入和读取目录不一致)
+app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="uploads")
+# workspace/uploads/ 兼容: 老用户可能有数据
+app.mount("/legacy-uploads", StaticFiles(directory=str(settings.WORKSPACE_UPLOADS_DIR)), name="legacy_uploads")
 
 app.include_router(chat.router)
 app.include_router(resources.router)
