@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "张雪峰智能体"
-    APP_VERSION: str = "1.1.5"  # v1.1.5: 系统设置内填 API Key + 项目清理 + README 重写
+    APP_VERSION: str = "0.1.6"  # v0.1.6: v2.0 大换血 — 5 页面架构 + nuwa 框架 + 个人画像精简 + 错题知识图谱 + 历史搜索 + 数据导出导入
     DEBUG: bool = True
 
     # Server
