@@ -10,6 +10,7 @@ class ScenarioEnum(str, Enum):
     EXAM = "exam"
     VOLUNTEER = "volunteer"
     CHAT = "chat"
+    CHITCHAT = "chitchat"   # v0.1.6: 新增"随便聊聊" scenario
 
 
 class EducationStageEnum(str, Enum):

@@ -21,6 +21,7 @@ import api from '@/api/client'
 import { listResources } from '@/api/resources'
 import { getWeakTopics } from '@/api/workspace'
 import { getConversation } from '@/api/conversations'
+import { streamChat } from '@/api/chat'
 import type { Resource, WeakTopic, WeakTopicsResponse } from '@/types'
 
 type ChatTab = 'qa' | 'volunteer' | 'chitchat'
@@ -135,6 +136,10 @@ export default function ChatPage() {
   const [convIds, setConvIds] = useState<Record<ChatTab, number | null>>(() => loadConvIds())
   // 单 in-memory message buffer: 切换 tab 时清空, 不带上下文
   const [messages, setMessages] = useState<any[]>([])
+  // v0.1.6: 发送状态 (补回被删的 send 按钮功能)
+  const [sending, setSending] = useState(false)
+  const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
 
   // persona 状态 (仅 chitchat 有效)
@@ -274,6 +279,98 @@ export default function ChatPage() {
     setInput('')
     setActiveTab(next)
     setPersonaMsg(null)
+  }
+
+  // v0.1.6: 发送消息 — 调 /api/chat 流式响应, 渲染到消息列表
+  const tabToScenario: Record<ChatTab, 'chat' | 'exam' | 'volunteer' | 'chitchat'> = {
+    qa: 'chat',
+    volunteer: 'volunteer',
+    chitchat: 'chitchat',
+  }
+
+  const handleSend = async () => {
+    const text = input.trim()
+    if (!text || sending) return
+
+    const scenario = tabToScenario[activeTab] || 'chat'
+    const ctrl = new AbortController()
+    setAbortCtrl(ctrl)
+    setSending(true)
+
+    // 1. 立即塞 user message
+    const userMsg = { role: 'user', content: text, created_at: new Date().toISOString() }
+    const assistantMsg = { role: 'assistant', content: '', streaming: true, created_at: new Date().toISOString() }
+    setMessages((prev) => [...prev, userMsg, assistantMsg])
+    setInput('')
+
+    try {
+      let acc = ''
+      for await (const ev of streamChat(
+        {
+          message: text,
+          scenario,
+          conversation_id: currentConvId ?? undefined,
+          user_id: 1,
+          stream: true,
+        },
+        ctrl.signal,
+      )) {
+        if (ev.type === 'content') {
+          acc += String(ev.data || '')
+          // 更新最后一条 assistant 消息
+          setMessages((prev) => {
+            const next = [...prev]
+            const idx = next.length - 1
+            if (idx >= 0 && next[idx].role === 'assistant') {
+              next[idx] = { ...next[idx], content: acc, streaming: true }
+            }
+            return next
+          })
+        } else if (ev.type === 'stopped') {
+          // 用户点停止 — 后端标记 stop
+          setMessages((prev) => {
+            const next = [...prev]
+            const idx = next.length - 1
+            if (idx >= 0 && next[idx].role === 'assistant') {
+              next[idx] = { ...next[idx], content: acc + '\n\n[已停止]', streaming: false }
+            }
+            return next
+          })
+        }
+      }
+      // 流结束 — 标记 streaming=false
+      setMessages((prev) => {
+        const next = [...prev]
+        const idx = next.length - 1
+        if (idx >= 0 && next[idx].role === 'assistant') {
+          next[idx] = { ...next[idx], streaming: false }
+        }
+        return next
+      })
+    } catch (e: any) {
+      const isAbort = e?.name === 'AbortError' || ctrl.signal.aborted
+      setMessages((prev) => {
+        const next = [...prev]
+        const idx = next.length - 1
+        if (idx >= 0 && next[idx].role === 'assistant') {
+          next[idx] = {
+            ...next[idx],
+            content: next[idx].content + (isAbort ? '\n\n[已停止]' : '\n\n[出错: ' + (e?.message || '?') + ']'),
+            streaming: false,
+          }
+        }
+        return next
+      })
+    } finally {
+      setSending(false)
+      setAbortCtrl(null)
+      // 滚到底
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    }
+  }
+
+  const handleAbort = () => {
+    abortCtrl?.abort()
   }
 
   const handlePersonaChange = async (next: string) => {
@@ -790,25 +887,46 @@ export default function ChatPage() {
             </div>
           )}
 
-          {/* 占位 / 简单消息展示 */}
-          <div className="bg-white/70 backdrop-blur border border-black/5 rounded-2xl p-5 shadow-sm min-h-[200px]">
+          {/* 消息列表 — v0.1.6 渲染 user/assistant 区分 + 流式光标 */}
+          <div className="bg-white/70 backdrop-blur border border-black/5 rounded-2xl p-5 shadow-sm min-h-[200px] max-h-[calc(100vh-280px)] overflow-y-auto">
             {messages.length === 0 ? (
               <div className="text-center text-zinc-400 py-10">
                 <tabConfig.icon size={36} className="mx-auto mb-3 text-zinc-300" />
                 <div className="text-sm">开始和 {tabConfig.label} 助手对话</div>
-                <div className="text-xs mt-1">由其他任务填充完整对话 UI</div>
+                <div className="text-xs mt-1">输入消息后按 Enter 或点「发送」</div>
               </div>
             ) : (
-              <div className="space-y-2 text-sm text-zinc-700">
-                {messages.map((m, i) => (
-                  <div key={i} className="text-zinc-600">{String(m.content ?? '')}</div>
-                ))}
+              <div className="space-y-3">
+                {messages.map((m, i) => {
+                  const isUser = m.role === 'user'
+                  const isLast = i === messages.length - 1
+                  return (
+                    <div
+                      key={i}
+                      className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap break-words ${
+                          isUser
+                            ? 'bg-zinc-900 text-white rounded-br-sm'
+                            : 'bg-zinc-100 text-zinc-900 rounded-bl-sm'
+                        }`}
+                      >
+                        {m.content || (m.streaming ? '' : '(空)')}
+                        {m.streaming && (
+                          <span className="inline-block w-1.5 h-4 bg-violet-400 ml-1 align-middle animate-pulse" />
+                        )}
+                      </div>
+                      {isLast && <div ref={messagesEndRef} />}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
 
-          <div className="mt-4 text-center text-xs text-zinc-400">
-            由其他任务填充 (流式回答 / 知识图谱联动 / 历史搜索)
+          <div className="mt-3 text-center text-xs text-zinc-400">
+            流式响应 · 自动滚动 · Shift+Enter 换行
           </div>
         </div>
       </div>
@@ -819,16 +937,34 @@ export default function ChatPage() {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={`输入消息 (当前 tab: ${tabConfig.label})`}
+            onKeyDown={(e) => {
+              // v0.1.6: Enter 发送, Shift+Enter 换行
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSend()
+              }
+            }}
+            placeholder={`输入消息 (当前 tab: ${tabConfig.label}, Enter 发送, Shift+Enter 换行)`}
             className="flex-1 px-3 py-2 bg-white border border-black/10 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300"
             rows={2}
+            disabled={sending}
           />
-          <button
-            disabled={!input.trim()}
-            className="px-4 py-2 bg-zinc-900 text-white text-sm rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            发送
-          </button>
+          {sending ? (
+            <button
+              onClick={handleAbort}
+              className="px-4 py-2 bg-red-500 text-white text-sm rounded-full hover:bg-red-600 flex items-center gap-1"
+            >
+              停止
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={!input.trim()}
+              className="px-4 py-2 bg-zinc-900 text-white text-sm rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              发送
+            </button>
+          )}
         </div>
       </div>
     </div>

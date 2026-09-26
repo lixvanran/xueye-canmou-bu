@@ -1,6 +1,6 @@
 // Type definitions
 
-export type Scenario = 'volunteer' | 'exam' | 'chat'
+export type Scenario = 'volunteer' | 'exam' | 'chat' | 'chitchat'
 
 export type EducationStage =
   | 'primary' | 'middle' | 'high' | 'vocational'
