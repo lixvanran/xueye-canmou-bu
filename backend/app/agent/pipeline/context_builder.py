@@ -42,6 +42,60 @@ def _summarize_rag(user_resources: list, kb_results: list) -> Dict:
     }
 
 
+# ===== v2.0: profile 衍生指令注入 =====
+def _build_profile_injection(user_profile: dict) -> str:
+    """根据 user profile 拼一段额外指令, 追加到 system prompt 末尾.
+
+    规则:
+    - stage=='初中': 用初中方法, 不引入高中公式
+    - language=='英文': 回复以英文为主
+    - agent_name 非默认 ('张老师'): 改称谓
+    - 调用方负责 skip scenario='volunteer' (其 persona 已自带张雪峰风格)
+    """
+    if not user_profile:
+        return ""
+
+    blocks: list[str] = []
+
+    stage = (user_profile.get("stage") or "").strip()
+    if stage == "初中":
+        blocks.append(
+            "用户是初中生, 解题用初中方法, 不引入高中公式"
+        )
+    elif stage == "小学":
+        blocks.append(
+            "用户是小学生, 用最简单的方式讲, 不要用超过小学范围的术语"
+        )
+    elif stage == "大学":
+        blocks.append(
+            "用户是大学生, 可以聊专业方向 / 考研 / 实习 / 就业"
+        )
+    elif stage == "考研":
+        blocks.append(
+            "用户在备考研究生, 重点聊考研复习 / 院校选择 / 学术方向"
+        )
+    elif stage == "在职":
+        blocks.append(
+            "用户已经在工作, 重点聊职业发展 / 跳槽 / 转行 / 技能提升"
+        )
+
+    language = (user_profile.get("language") or "").strip()
+    if language == "英文":
+        blocks.append("回复以英文为主 (除非用户主动切回中文)")
+    elif language == "双语":
+        blocks.append("中英双语都可以, 根据用户语言自然切换")
+
+    agent_name = (user_profile.get("agent_name") or "").strip()
+    if agent_name and agent_name != "张老师":
+        blocks.append(
+            f"你叫 {agent_name}, 不要自称'张老师'或'老张'等默认称呼"
+        )
+
+    if not blocks:
+        return ""
+    return "# Profile-driven adaptation (v2.0)\n" + "\n".join(f"- {b}" for b in blocks)
+
+
 async def build_messages(
     user_message: str,
     scenario: str,
@@ -99,6 +153,13 @@ async def build_messages(
         scenario, user_profile, rag_context,
         web_search_enabled=ws_on, deep_thinking_enabled=dt_on,
     )
+
+    # v2.0: profile 衍生指令注入 (末尾追加)
+    # 注意: 报志愿场景 (scenario='volunteer') 已自带"张雪峰"风格 persona, **不要覆盖**
+    if scenario != "volunteer" and user_profile:
+        profile_injection = _build_profile_injection(user_profile)
+        if profile_injection:
+            system_prompt = system_prompt + "\n\n" + profile_injection
 
     # v0.9.9: 在 system prompt 顶部塞长期事实 (人脑长期记忆类比)
     if user_facts:

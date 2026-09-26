@@ -113,11 +113,12 @@ class AgentOrchestrator:
             fallback_models=route["fallback_models"],
         )
 
-        # 4) 持久化
-        self.memory.save_message(conv_id, "user", user_message)
+        # 4) 持久化 — v2.0: 强制传 scenario, 防串台
+        self.memory.save_message(conv_id, "user", user_message, scenario=scenario)
         self.memory.save_message(
             conv_id, "assistant", result["content"],
             tool_calls=json.dumps(result["tool_calls"], ensure_ascii=False) if result["tool_calls"] else None,
+            scenario=scenario,
         )
 
         # v0.9.9: 异步抽取长期事实 (fire-and-forget, 不阻塞返回)
@@ -242,9 +243,9 @@ class AgentOrchestrator:
         if reasoning_text and not full_content.lstrip().startswith("["):
             yield f"[REASONING]{json.dumps({'thinking': reasoning_text, 'answer': full_content, 'route': route_info}, ensure_ascii=False)}[/REASONING]\n\n"
 
-        # 7) 持久化
-        self.memory.save_message(conv_id, "user", user_message)
-        self.memory.save_message(conv_id, "assistant", full_content, tool_calls="[]")
+        # 7) 持久化 — v2.0: 强制传 scenario, 防串台
+        self.memory.save_message(conv_id, "user", user_message, scenario=scenario)
+        self.memory.save_message(conv_id, "assistant", full_content, tool_calls="[]", scenario=scenario)
 
 
 orchestrator = AgentOrchestrator()

@@ -12,6 +12,9 @@ from app.routers import chat, resources, conversations, user, tts, workspace
 # v0.9.1: 修复 — 别名 import 避免覆盖 app.core.config.settings
 from app.routers import settings as settings_router
 from app.routers import api_key as api_key_router
+# v2.0: 新增路由 — 日程/学习计划 + nuwa skill 框架
+from app.routers import schedule as schedule_router
+from app.routers import nuwa_skill as nuwa_skill_router
 import logging
 import time
 
@@ -55,6 +58,13 @@ async def lifespan(app: FastAPI):
     # ★ 启动自检: ping 一下 OpenRouter 验证 key 是否有效
     # 不通过也不报错, 只在日志里告警
     await self_check_openrouter()
+
+    # v2.0: nuwa-skill 框架 warmup (打印当前加载 skill 数量)
+    try:
+        from app.agent.tools.nuwa_skill import warmup_log as _nuwa_warmup
+        _nuwa_warmup()
+    except Exception as e:
+        logger.debug(f"nuwa warmup skipped: {e}")
 
     # v0.9.5: 删 self_check_anthropic_access (启动时不再主动 ping 模型, 避免 OpenRouter 开销)
     # 如果要看模型能不能调, 点 API 状态页的"重新检测"按钮
@@ -141,6 +151,9 @@ app.include_router(tts.router)
 app.include_router(workspace.router)
 app.include_router(settings_router.router)
 app.include_router(api_key_router.router)
+# v2.0: 新增
+app.include_router(schedule_router.router)
+app.include_router(nuwa_skill_router.router)
 
 
 

@@ -333,15 +333,104 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "wrong_book_query",
-            "description": "查询错题本。按学科/知识点/掌握状态过滤。",
+            "description": "查询错题本。按学科/知识点/掌握状态过滤。v2.0 返回值里含 knowledge_tags 和 difficulty, 方便 Agent 分析薄弱点。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "subject": {"type": "string", "description": "按学科过滤, 如 '数学'"},
                     "knowledge_point": {"type": "string", "description": "按知识点模糊匹配"},
+                    "knowledge_tag": {"type": "string", "description": "v2.0 按细粒度知识点标签过滤 (knowledge_tags 里的任一项匹配)"},
                     "mastered": {"type": "boolean", "description": "是否已掌握"},
                     "limit": {"type": "integer", "description": "返回数量, 默认 20"},
                 },
+            },
+        },
+    },
+    # ===== v2.0 日程/学习计划 =====
+    {
+        "type": "function",
+        "function": {
+            "name": "create_schedule",
+            "description": "创建一条日程/学习计划。日期用 YYYY-MM-DD 格式。当用户说'帮我排个计划'、'今天复习 X'时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "date": {"type": "string", "description": "日期 YYYY-MM-DD"},
+                    "content": {"type": "string", "description": "内容 (短文本)"},
+                    "type": {"type": "string", "description": "类型: study/review/exam/rest/custom"},
+                    "note": {"type": "string", "description": "额外备注 (可选)"},
+                    "resource_id": {"type": "integer", "description": "关联的错题/资料 id (可选)"},
+                },
+                "required": ["date", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_schedule",
+            "description": "查日程列表。可按日期范围或类型过滤。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "date_range": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "日期范围 [start_date, end_date], 都用 YYYY-MM-DD",
+                    },
+                    "type": {"type": "string", "description": "类型过滤: study/review/exam/rest/custom"},
+                    "include_completed": {"type": "boolean", "description": "是否含已完成 (默认 true)"},
+                    "limit": {"type": "integer", "description": "最多返回条数 (默认 100)"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_schedule",
+            "description": "更新日程。只传要改的字段。completed=true 标记完成。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer", "description": "日程 id"},
+                    "date": {"type": "string", "description": "新日期 YYYY-MM-DD"},
+                    "content": {"type": "string", "description": "新内容"},
+                    "type": {"type": "string", "description": "新类型"},
+                    "completed": {"type": "boolean", "description": "是否完成"},
+                    "note": {"type": "string", "description": "新备注"},
+                },
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_schedule",
+            "description": "删除一条日程。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer", "description": "日程 id"},
+                },
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "suggest_schedule",
+            "description": "根据用户目标生成 N 天学习计划草稿。返回 [{date, content, type}, ...], 不直接入库, 让用户确认后再用 create_schedule 写入。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string", "description": "学习目标, 如 '期末数学冲 120'/'英语六级 500+'"},
+                    "days": {"type": "integer", "description": "生成天数 (默认 7, 最大 30)"},
+                    "start_date": {"type": "string", "description": "起始日期 YYYY-MM-DD (默认今天)"},
+                },
+                "required": ["goal"],
             },
         },
     },

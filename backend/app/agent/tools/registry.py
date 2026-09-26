@@ -26,6 +26,11 @@ from app.agent.tools.wrong_book import (
     wrong_book_add_mistake,          # v0.9.1 新增
     wrong_book_query,                # v0.9.1 新增
 )
+from app.agent.tools.schedule import (  # v2.0 新增 — 日程/学习计划
+    create_schedule, delete_schedule, list_schedule,
+    update_schedule, suggest_schedule,
+)
+from app.agent.tools import nuwa_skill as _nuwa_skill  # v2.0 预留接入
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +64,12 @@ TOOL_REGISTRY: Dict[str, Callable[..., Awaitable[Dict]]] = {
     "wrong_book_describe_file": wrong_book_describe_file,
     "wrong_book_add_mistake": wrong_book_add_mistake,
     "wrong_book_query": wrong_book_query,
+    # ===== v2.0 日程/学习计划 =====
+    "create_schedule": create_schedule,
+    "delete_schedule": delete_schedule,
+    "list_schedule": list_schedule,
+    "update_schedule": update_schedule,
+    "suggest_schedule": suggest_schedule,
 }
 
 

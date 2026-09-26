@@ -1,5 +1,8 @@
-"""Conversation history API"""
-from fastapi import APIRouter, Depends, HTTPException
+"""Conversation history API
+
+v2.0: 新增 GET /api/conversations/search — 跨对话搜 (title + message content)
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db, ConversationORM, MessageORM
 from app.models.schemas import ScenarioEnum
@@ -39,15 +42,37 @@ async def list_conversations(
     }
 
 
+# 注意: /search 必须在 /{conversation_id} 之前, 否则会被 int 匹配吃掉
+@router.get("/search")
+async def search_conversations(
+    q: str = Query("", description="搜索关键词, 匹配 title 或 message content (LIKE %q%)"),
+    scenario: Optional[str] = Query(None, description="可选 scenario 过滤: chat/exam/volunteer/chitchat"),
+    user_id: int = 1,
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """v2.0: 跨对话搜索
+
+    - q 为空: 按时间倒序返回该用户所有对话 (等价 list)
+    - q 非空: title LIKE %q% OR message.content LIKE %q%
+    - 可选 scenario 过滤
+    - 返回 [{id, title, scenario, updated_at, hit_count}, ...]
+    """
+    from app.agent.memory.store import search_conversations as _search
+    results = _search(db, user_id=user_id, q=q, scenario=scenario, limit=limit)
+    return {"total": len(results), "items": results, "q": q, "scenario": scenario}
+
+
 @router.get("/{conversation_id}")
 async def get_conversation(conversation_id: int, db: Session = Depends(get_db)):
     """Get conversation with all messages"""
     conv = db.query(ConversationORM).filter_by(id=conversation_id).first()
     if not conv:
         raise HTTPException(404, "Conversation not found")
+    # v2.0: 强制 scenario 过滤 (防串台)
     messages = (
         db.query(MessageORM)
-        .filter_by(conversation_id=conversation_id)
+        .filter_by(conversation_id=conversation_id, scenario=conv.scenario)
         .order_by(MessageORM.created_at)
         .all()
     )
@@ -102,10 +127,12 @@ async def create_conversation(
     user_id: int = 1,
     db: Session = Depends(get_db),
 ):
-    """Create a blank conversation"""
+    """Create a blank conversation. v2.0: scenario 强制归一化."""
+    from app.db.database import normalize_scenario
+    safe_scenario = normalize_scenario(scenario)
     conv = ConversationORM(
         user_id=user_id,
-        scenario=scenario,
+        scenario=safe_scenario,
         title=title or "新对话",
     )
     db.add(conv)
