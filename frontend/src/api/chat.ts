@@ -13,6 +13,8 @@ export interface ChatParams {
 
 export type StreamEventType =
   | 'content' | 'rag' | 'rag_trace' | 'route' | 'tools' | 'search_results' | 'reasoning' | 'thinking' | 'stopped'
+  // v0.1.7: 运行过程可视化 — 完整时间线事件
+  | 'start' | 'ctx' | 'llm_done' | 'end'
 
 export interface StreamEvent {
   type: StreamEventType
@@ -106,6 +108,23 @@ export async function* streamChat(
           if (parsed.content.includes('[STOPPED]')) {
             yield { type: 'stopped', data: parsed.content }
             continue
+          }
+          // v0.1.7: 运行过程可视化事件 (START / CTX / LLM_DONE / END)
+          if (parsed.content.includes('[START]') && parsed.content.includes('[/START]')) {
+            const m = parsed.content.match(/\[START\](.*?)\[\/START\]/)
+            if (m) { yield { type: 'start', data: JSON.parse(m[1]) }; continue }
+          }
+          if (parsed.content.includes('[CTX]') && parsed.content.includes('[/CTX]')) {
+            const m = parsed.content.match(/\[CTX\](.*?)\[\/CTX\]/)
+            if (m) { yield { type: 'ctx', data: JSON.parse(m[1]) }; continue }
+          }
+          if (parsed.content.includes('[LLM_DONE]') && parsed.content.includes('[/LLM_DONE]')) {
+            const m = parsed.content.match(/\[LLM_DONE\](.*?)\[\/LLM_DONE\]/)
+            if (m) { yield { type: 'llm_done', data: JSON.parse(m[1]) }; continue }
+          }
+          if (parsed.content.includes('[END]') && parsed.content.includes('[/END]')) {
+            const m = parsed.content.match(/\[END\](.*?)\[\/END\]/)
+            if (m) { yield { type: 'end', data: JSON.parse(m[1]) }; continue }
           }
           yield { type: 'content', data: sanitizeContent(parsed.content) }
         } catch {}

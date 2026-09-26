@@ -16,6 +16,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   MessageSquare, GraduationCap, MessageCircle, ChevronDown, Loader2, AlertCircle, CheckCircle2,
   UserCircle2, BookOpen, Target, X, Sparkles, Search, Calendar, Clock, ArrowRight,
+  Cpu, Brain, Wrench, Database, Network, Activity, GitBranch, ChevronRight as ChevronRightSm,
 } from 'lucide-react'
 import api from '@/api/client'
 import { listResources } from '@/api/resources'
@@ -140,6 +141,8 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false)
   const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // v0.1.7: 当前正在流的 trace (assistant 消息接收 event 时累积)
+  const [currentTrace, setCurrentTrace] = useState<any>(null)
   const [input, setInput] = useState('')
 
   // persona 状态 (仅 chitchat 有效)
@@ -299,12 +302,42 @@ export default function ChatPage() {
 
     // 1. 立即塞 user message
     const userMsg = { role: 'user', content: text, created_at: new Date().toISOString() }
-    const assistantMsg = { role: 'assistant', content: '', streaming: true, created_at: new Date().toISOString() }
+    const assistantMsg = {
+      role: 'assistant',
+      content: '',
+      streaming: true,
+      created_at: new Date().toISOString(),
+      trace: null, // v0.1.7: Agent 完整运行过程 (route/rag/tools/thinking)
+    }
     setMessages((prev) => [...prev, userMsg, assistantMsg])
     setInput('')
+    const emptyTrace = {
+      start: null as any, ctx: null as any, route: null as any, rag: null as any, rag_trace: null as any,
+      tool_calls: [] as any[], tool_results: [] as any[], thinking: '', reasoning: null as any,
+      llm_done: null as any, end: null as any,
+    }
+    setCurrentTrace({ ...emptyTrace })
 
     try {
       let acc = ''
+      const trace: typeof emptyTrace = {
+        ...emptyTrace,
+        tool_calls: [],
+        tool_results: [],
+      }
+      const updateTrace = () => setCurrentTrace({ ...trace })
+      const commitTraceToMsg = () => {
+        // 流结束后把 trace 塞回消息对象
+        setMessages((prev) => {
+          const next = [...prev]
+          const idx = next.length - 1
+          if (idx >= 0 && next[idx].role === 'assistant') {
+            next[idx] = { ...next[idx], trace: { ...trace } }
+          }
+          return next
+        })
+      }
+
       for await (const ev of streamChat(
         {
           message: text,
@@ -315,38 +348,78 @@ export default function ChatPage() {
         },
         ctrl.signal,
       )) {
-        if (ev.type === 'content') {
-          acc += String(ev.data || '')
-          // 更新最后一条 assistant 消息
-          setMessages((prev) => {
-            const next = [...prev]
-            const idx = next.length - 1
-            if (idx >= 0 && next[idx].role === 'assistant') {
-              next[idx] = { ...next[idx], content: acc, streaming: true }
-            }
-            return next
-          })
-        } else if (ev.type === 'stopped') {
-          // 用户点停止 — 后端标记 stop
-          setMessages((prev) => {
-            const next = [...prev]
-            const idx = next.length - 1
-            if (idx >= 0 && next[idx].role === 'assistant') {
-              next[idx] = { ...next[idx], content: acc + '\n\n[已停止]', streaming: false }
-            }
-            return next
-          })
+        switch (ev.type) {
+          case 'start':
+            trace.start = ev.data
+            updateTrace()
+            break
+          case 'ctx':
+            trace.ctx = ev.data
+            updateTrace()
+            break
+          case 'rag':
+            trace.rag = ev.data
+            updateTrace()
+            break
+          case 'rag_trace':
+            trace.rag_trace = ev.data
+            updateTrace()
+            break
+          case 'route':
+            trace.route = ev.data
+            updateTrace()
+            break
+          case 'tools':
+            trace.tool_calls = trace.tool_calls.concat([ev.data])
+            updateTrace()
+            break
+          case 'search_results':
+            trace.tool_results = trace.tool_results.concat([ev.data])
+            updateTrace()
+            break
+          case 'thinking':
+            trace.thinking += String(ev.data || '')
+            updateTrace()
+            break
+          case 'reasoning':
+            trace.reasoning = ev.data
+            updateTrace()
+            break
+          case 'llm_done':
+            trace.llm_done = ev.data
+            updateTrace()
+            break
+          case 'end':
+            trace.end = ev.data
+            updateTrace()
+            break
+          case 'content':
+            acc += String(ev.data || '')
+            // 更新最后一条 assistant 消息
+            setMessages((prev) => {
+              const next = [...prev]
+              const idx = next.length - 1
+              if (idx >= 0 && next[idx].role === 'assistant') {
+                next[idx] = { ...next[idx], content: acc, streaming: true }
+              }
+              return next
+            })
+            break
+          case 'stopped':
+            setMessages((prev) => {
+              const next = [...prev]
+              const idx = next.length - 1
+              if (idx >= 0 && next[idx].role === 'assistant') {
+                next[idx] = { ...next[idx], content: acc + '\n\n[已停止]', streaming: false }
+              }
+              return next
+            })
+            break
         }
       }
-      // 流结束 — 标记 streaming=false
-      setMessages((prev) => {
-        const next = [...prev]
-        const idx = next.length - 1
-        if (idx >= 0 && next[idx].role === 'assistant') {
-          next[idx] = { ...next[idx], streaming: false }
-        }
-        return next
-      })
+      // 流结束 — 标记 streaming=false + trace 入消息
+      commitTraceToMsg()
+      setCurrentTrace(null)
     } catch (e: any) {
       const isAbort = e?.name === 'AbortError' || ctrl.signal.aborted
       setMessages((prev) => {
@@ -918,6 +991,13 @@ export default function ChatPage() {
                         )}
                       </div>
                       {isLast && <div ref={messagesEndRef} />}
+                      {/* v0.1.7: Agent 完整运行过程可视化 — 每个 assistant 消息下挂一个折叠面板 */}
+                      {!isUser && (m.trace || m.streaming) && (
+                        <AgentTracePanel
+                          trace={m.trace}
+                          liveTrace={m.streaming && isLast ? currentTrace : null}
+                        />
+                      )}
                     </div>
                   )
                 })}
@@ -967,6 +1047,160 @@ export default function ChatPage() {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ===== v0.1.7: Agent 完整运行过程可视化面板 (参赛核心展示) =====
+function AgentTracePanel({ trace, liveTrace }: { trace: any; liveTrace: any }) {
+  const t = liveTrace || trace || {}
+  const [expanded, setExpanded] = useState(false)
+  const [expandedStep, setExpandedStep] = useState<string | null>(null)
+
+  const total = t?.end?.total_latency_ms
+  const isLive = !!liveTrace
+
+  // 阶段数据
+  const steps: Array<{
+    key: string; icon: any; label: string; color: string; data?: any; sub?: string
+  }> = [
+    {
+      key: 'start',
+      icon: Activity,
+      label: '启动',
+      color: 'bg-slate-100 text-slate-700',
+      data: t.start,
+      sub: t.start?.scenario ? `scenario: ${t.start.scenario}` : undefined,
+    },
+    {
+      key: 'ctx',
+      icon: Database,
+      label: '上下文',
+      color: 'bg-blue-100 text-blue-700',
+      data: t.ctx,
+      sub: t.ctx ? `${t.ctx.history_count || 0} 历史 + ${t.ctx.facts_count || 0} 事实 + ${t.ctx.user_resources_count || 0} 错题` : undefined,
+    },
+    {
+      key: 'rag',
+      icon: BookOpen,
+      label: 'RAG 检索',
+      color: 'bg-purple-100 text-purple-700',
+      data: t.rag,
+      sub: t.rag ? `命中: ${t.rag.kb_count || 0} KB / ${t.rag.user_count || 0} 错题` : undefined,
+    },
+    {
+      key: 'rag_trace',
+      icon: GitBranch,
+      label: 'RAG 步骤',
+      color: 'bg-purple-50 text-purple-600',
+      data: t.rag_trace,
+      sub: t.rag_trace?.stages ? `${t.rag_trace.stages.length} 步 · ${t.rag_trace.summary?.latency_ms ?? '?'}ms` : undefined,
+    },
+    {
+      key: 'route',
+      icon: Cpu,
+      label: '分级路由',
+      color: 'bg-amber-100 text-amber-700',
+      data: t.route,
+      sub: t.route ? `${t.route.complexity} → ${t.route.model}` : undefined,
+    },
+    {
+      key: 'tools',
+      icon: Wrench,
+      label: '工具调用',
+      color: 'bg-emerald-100 text-emerald-700',
+      data: { calls: t.tool_calls || [], results: t.tool_results || [] },
+      sub: `${(t.tool_calls || []).length} 次调用 / ${(t.tool_results || []).length} 个结果`,
+    },
+    {
+      key: 'thinking',
+      icon: Brain,
+      label: '思考过程',
+      color: 'bg-indigo-100 text-indigo-700',
+      data: t.thinking,
+      sub: t.thinking ? `${t.thinking.length} 字` : (t.reasoning?.thinking ? `${t.reasoning.thinking.length} 字 (deep)` : undefined),
+    },
+    {
+      key: 'llm_done',
+      icon: Sparkles,
+      label: 'LLM 完成',
+      color: 'bg-green-100 text-green-700',
+      data: t.llm_done,
+      sub: t.llm_done ? `${t.llm_done.latency_ms}ms · 输出 ${t.llm_done.content_length} 字` : undefined,
+    },
+  ]
+
+  // 没数据且没在 live, 不显示
+  if (!isLive && !total && !t.start) return null
+
+  return (
+    <div className="w-full mt-2 ml-0">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+          isLive
+            ? 'bg-violet-50 border-violet-300 text-violet-700 animate-pulse'
+            : 'bg-white border-zinc-200 text-zinc-700 hover:border-zinc-400'
+        }`}
+        title="Agent 完整运行过程 (分级路由 · RAG 检索 · 工具调用 · 思考过程)"
+      >
+        <Search size={12} />
+        <span>{isLive ? 'Agent 运行中...' : '🔍 Agent 完整运行过程'}</span>
+        {total != null && <span className="text-zinc-500">· {(total / 1000).toFixed(2)}s</span>}
+        {expanded ? <ChevronDown size={12} /> : <ChevronRightSm size={12} />}
+      </button>
+
+      {expanded && (
+        <div className="mt-2 bg-white border border-zinc-200 rounded-xl p-3 text-xs space-y-2 shadow-sm">
+          {/* 时间线 */}
+          <div className="flex flex-wrap gap-2">
+            {steps.map((s) => {
+              const Icon = s.icon
+              const hasData = s.data !== null && s.data !== undefined && s.data !== ''
+              const isOpen = expandedStep === s.key
+              return (
+                <div key={s.key} className="flex-1 min-w-[120px]">
+                  <button
+                    onClick={() => setExpandedStep(isOpen ? null : s.key)}
+                    disabled={!hasData}
+                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md border ${
+                      hasData
+                        ? 'bg-white border-zinc-200 hover:border-zinc-400 cursor-pointer'
+                        : 'bg-zinc-50 border-zinc-100 text-zinc-400 cursor-default'
+                    }`}
+                  >
+                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded ${s.color}`}>
+                      <Icon size={10} />
+                    </span>
+                    <span className="font-medium text-zinc-700">{s.label}</span>
+                    {s.sub && <span className="text-zinc-500 text-[10px] truncate">{s.sub}</span>}
+                  </button>
+                  {isOpen && hasData && (
+                    <pre className="mt-1 p-2 bg-zinc-50 rounded text-[10px] overflow-auto max-h-48 text-zinc-700 border border-zinc-100">
+                      {JSON.stringify(s.data, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* 总览 */}
+          {t.end && (
+            <div className="pt-2 border-t border-zinc-100 flex flex-wrap gap-3 text-zinc-600">
+              <span><Clock size={10} className="inline mr-1" />总耗时 <b>{(t.end.total_latency_ms / 1000).toFixed(2)}s</b></span>
+              <span><Cpu size={10} className="inline mr-1" />模型 <b>{t.end.model_used}</b></span>
+              <span><Database size={10} className="inline mr-1" />上下文 <b>{t.end.ctx_latency_ms}ms</b></span>
+              <span><Network size={10} className="inline mr-1" />路由 <b>{t.end.route_latency_ms}ms</b></span>
+              <span><Sparkles size={10} className="inline mr-1" />LLM <b>{t.end.llm_latency_ms}ms</b></span>
+              <span><Wrench size={10} className="inline mr-1" />工具 <b>{t.end.tool_calls_count} 次</b></span>
+              {t.end.reasoning_length > 0 && (
+                <span><Brain size={10} className="inline mr-1" />思考 <b>{t.end.reasoning_length} 字</b></span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

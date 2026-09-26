@@ -157,14 +157,22 @@ class AgentOrchestrator:
         force_tier: Optional[str] = None,
         stop_event: Optional[asyncio.Event] = None,
     ) -> AsyncGenerator[str, None]:
-        """流式处理 - SSE 增量输出"""
+        """流式处理 - SSE 增量输出
+        v0.1.7 (参赛): 加 [START] / [END] 事件 + 每步 timing, 让前端能拼完整时间线"""
+        import time as _time
+
+        run_started = _time.time()
         conv_id = self.memory.get_or_create_conversation(user_id, scenario, conversation_id)
         self.memory.maybe_update_title(conv_id, user_message)
+
+        # v0.1.7: 起始事件 — conv_id + scenario + 触发前端 "Agent 启动" 动画
+        yield f"[START]{json.dumps({'conv_id': conv_id, 'scenario': scenario, 'started_at': run_started, 'user_message': user_message[:200]}, ensure_ascii=False)}[/START]\n\n"
 
         # 1) 拼 context
         # v0.1: 创建 RAG tracer, 记录全过程
         from app.rag.tracer import make_tracer
         tracer = make_tracer(user_message)
+        t0 = _time.time()
 
         ctx = await build_messages(
             user_message, scenario, user_id, self.memory,
@@ -173,14 +181,17 @@ class AgentOrchestrator:
             deep_thinking_enabled=deep_thinking_enabled,
             tracer=tracer,
         )
+        ctx_latency_ms = round((_time.time() - t0) * 1000, 2)
 
         # 2) 路由选模型 (走 routing 模块)
+        t0 = _time.time()
         route = await self._route_model(
             user_message,
             history=ctx["messages"][1:],
             deep_thinking=bool(ctx["dt_on"]),
             force_tier=force_tier,
         )
+        route_latency_ms = round((_time.time() - t0) * 1000, 2)
         cls_info = route.get("classification")
         logger.info(
             f"Route: complexity={route['complexity']}, "
@@ -188,26 +199,43 @@ class AgentOrchestrator:
             f"(classifier={cls_info.model_used if cls_info else 'n/a'})"
         )
 
+        # v0.1.7: context 步骤 (含耗时 + token 估算)
+        ctx_payload = {
+            'latency_ms': ctx_latency_ms,
+            'history_count': len(ctx.get('messages', [])) - 1,
+            'facts_count': ctx.get('rag_summary', {}).get('facts_count', 0),
+            'user_resources_count': len(ctx.get('user_resources', [])),
+            'kb_results_count': len(ctx.get('kb_results', [])),
+            'web_search_on': ctx.get('ws_on', False),
+            'deep_thinking_on': ctx.get('dt_on', False),
+        }
+        yield f"[CTX]{json.dumps(ctx_payload, ensure_ascii=False)}[/CTX]\n\n"
+
         # 3) 先发 RAG summary
         yield f"[RAG]{json.dumps(ctx['rag_summary'], ensure_ascii=False)}[/RAG]\n\n"
         # v0.1: 发完整 RAG trace (全过程)
         if ctx.get("rag_trace"):
             yield f"[RAG_TRACE]{json.dumps(ctx['rag_trace'], ensure_ascii=False)}[/RAG_TRACE]\n\n"
 
-        # 4) 发路由信息
+        # 4) 发路由信息 (v0.1.7 加了完整 tier + fallback chain)
         route_info = {
             "complexity": route["complexity"],
             "model": route["primary_model"],
+            "tier": route["tier_info"].name if hasattr(route.get("tier_info"), "name") else str(route.get("tier_info")),
             "tier_description": route["tier_info"].description,
             "reason": cls_info.reason if cls_info else "",
             "fallback": cls_info.fallback if cls_info else False,
             "classifier_model": cls_info.model_used if cls_info else "n/a",
+            "fallback_models": route.get("fallback_models", []),
+            "latency_ms": route_latency_ms,
         }
         yield f"[ROUTE]{json.dumps(route_info, ensure_ascii=False)}[/ROUTE]\n\n"
 
         # 5) 流式 LLM
+        llm_started = _time.time()
         full_content = ""
         reasoning_text = ""
+        tool_calls_count = 0
         # v0.8.0: 深推时去掉 inline 图
         from app.agent.pipeline.preprocessor import build_user_content
         if ctx["dt_on"] and _has_inline_image(ctx["messages"]):
@@ -226,9 +254,18 @@ class AgentOrchestrator:
                 reasoning_text += ev_data
                 yield f"[THINKING]{ev_data}[/THINKING]\n\n"
             elif ev_type == "tool_call":
-                yield f"[TOOL_CALLS]{json.dumps(ev_data, ensure_ascii=False)}[/TOOL_CALLS]\n\n"
+                tool_calls_count += 1
+                # v0.1.7: tool_call 加时间戳
+                ev_data_with_ts = ev_data if isinstance(ev_data, dict) else {"raw": ev_data}
+                if isinstance(ev_data_with_ts, dict) and "ts" not in ev_data_with_ts:
+                    ev_data_with_ts["ts"] = round((_time.time() - llm_started) * 1000, 2)
+                yield f"[TOOL_CALLS]{json.dumps(ev_data_with_ts, ensure_ascii=False)}[/TOOL_CALLS]\n\n"
             elif ev_type == "tool_result":
-                yield f"[TOOL_RESULTS]{json.dumps(ev_data, ensure_ascii=False)}[/TOOL_RESULTS]\n\n"
+                # v0.1.7: tool_result 加时间戳
+                ev_data_with_ts = ev_data if isinstance(ev_data, dict) else {"raw": ev_data}
+                if isinstance(ev_data_with_ts, dict) and "ts" not in ev_data_with_ts:
+                    ev_data_with_ts["ts"] = round((_time.time() - llm_started) * 1000, 2)
+                yield f"[TOOL_RESULTS]{json.dumps(ev_data_with_ts, ensure_ascii=False)}[/TOOL_RESULTS]\n\n"
             elif ev_type == "content":
                 full_content += ev_data
                 yield ev_data
@@ -238,6 +275,38 @@ class AgentOrchestrator:
                     reasoning_text = ev_data["reasoning"]
                 if ev_data.get("model_used"):
                     route_info["model"] = ev_data["model_used"]
+
+        llm_latency_ms = round((_time.time() - llm_started) * 1000, 2)
+
+        # v0.1.7: LLM 完成事件 — 含最终 token 估算 + 模型
+        llm_done_payload = {
+            'latency_ms': llm_latency_ms,
+            'content_length': len(full_content),
+            'reasoning_length': len(reasoning_text),
+            'tool_calls_count': tool_calls_count,
+            'model_used': route_info.get('model'),
+        }
+        yield f"[LLM_DONE]{json.dumps(llm_done_payload, ensure_ascii=False)}[/LLM_DONE]\n\n"
+
+        # 6) 最后发 REASONING
+        if reasoning_text and not full_content.lstrip().startswith("["):
+            yield f"[REASONING]{json.dumps({'thinking': reasoning_text, 'answer': full_content, 'route': route_info}, ensure_ascii=False)}[/REASONING]\n\n"
+
+        # v0.1.7: 结束事件 — 总耗时 + 总结 (前端用来画完整时间线)
+        total_latency_ms = round((_time.time() - run_started) * 1000, 2)
+        end_payload = {
+            'total_latency_ms': total_latency_ms,
+            'ctx_latency_ms': ctx_latency_ms,
+            'route_latency_ms': route_latency_ms,
+            'llm_latency_ms': llm_latency_ms,
+            'conv_id': conv_id,
+            'scenario': scenario,
+            'model_used': route_info.get('model'),
+            'tool_calls_count': tool_calls_count,
+            'reasoning_length': len(reasoning_text),
+            'content_length': len(full_content),
+        }
+        yield f"[END]{json.dumps(end_payload, ensure_ascii=False)}[/END]\n\n"
 
         # 6) 最后发 REASONING
         if reasoning_text and not full_content.lstrip().startswith("["):
