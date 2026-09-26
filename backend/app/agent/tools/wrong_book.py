@@ -187,6 +187,16 @@ async def wrong_book_add_mistake(
                 # 不在 workspace 下, 保留原样
                 stored_file_path = str(p).replace("\\", "/")
 
+        # v2.0: 自动打标签 — 拿 3-5 个细粒度知识点 + 难度
+        try:
+            from app.agent.prompts.taggers.mistake_tagger import tag_mistake
+            knowledge_tags_list, difficulty = await tag_mistake(
+                title=title, content=content, subject=subject or ""
+            )
+        except Exception as e:
+            logger.warning(f"wrong_book_add_mistake: tagger failed (non-fatal): {e}")
+            knowledge_tags_list, difficulty = [], 3
+
         resource = ResourceORM(
             user_id=user_id,
             type="mistake",
@@ -196,6 +206,8 @@ async def wrong_book_add_mistake(
             file_path=stored_file_path,
             subject=subject or None,
             knowledge_point=knowledge_point or None,
+            knowledge_tags=knowledge_tags_list,  # v2.0
+            difficulty=difficulty,               # v2.0
             error_type=error_type or None,
             notes=notes or None,
         )
@@ -215,9 +227,14 @@ async def wrong_book_add_mistake(
                 "title": title,
                 "subject": subject or "",
                 "knowledge_point": knowledge_point or "",
+                "knowledge_tags": knowledge_tags_list,  # v2.0
+                "difficulty": str(difficulty),
             },
         )
-        logger.info(f"Added wrong book {code}: {title} (RAG: {rag_ok})")
+        logger.info(
+            f"Added wrong book {code}: {title} "
+            f"(tags={knowledge_tags_list}, difficulty={difficulty}, RAG: {rag_ok})"
+        )
 
         return {
             "success": True,
@@ -226,6 +243,8 @@ async def wrong_book_add_mistake(
             "title": title,
             "subject": subject,
             "knowledge_point": knowledge_point,
+            "knowledge_tags": knowledge_tags_list,  # v2.0
+            "difficulty": difficulty,                # v2.0
             "rag_indexed": rag_ok,
             "message": f"已加入错题本: {code} {title}",
         }
@@ -277,6 +296,8 @@ async def wrong_book_query(
                     "title": r.title,
                     "subject": r.subject,
                     "knowledge_point": r.knowledge_point,
+                    "knowledge_tags": r.knowledge_tags or [],  # v2.0
+                    "difficulty": r.difficulty or 3,            # v2.0
                     "error_type": r.error_type,
                     "mastered": r.mastered,
                     "created_at": r.created_at.isoformat() if r.created_at else None,

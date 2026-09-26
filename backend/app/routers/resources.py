@@ -43,8 +43,10 @@ def _serialize(r: ResourceORM) -> dict:
         "subject": r.subject,
         "tags": r.tags or [],
         "knowledge_point": r.knowledge_point,
+        "knowledge_tags": r.knowledge_tags or [],  # v2.0: 知识图谱标签
         "error_type": r.error_type,
         "mastered": r.mastered,
+        "difficulty": r.difficulty or 3,           # v2.0: 难度 1-5
         "notes": r.notes,
         "solution": r.solution,
         "thinking": r.thinking,
@@ -79,6 +81,7 @@ async def list_resources(
     type: str = None,
     subject: str = None,
     search: str = None,
+    knowledge_tag: str = None,  # v2.0: 按知识点标签筛选 (任意匹配即可)
     db: Session = Depends(get_db),
 ):
     q = db.query(ResourceORM).filter_by(user_id=user_id)
@@ -86,16 +89,49 @@ async def list_resources(
         q = q.filter(ResourceORM.type == type)
     if subject:
         q = q.filter(ResourceORM.subject == subject)
-    if search:
+    if knowledge_tag:
+        # 注意: SQLite 的 JSON 列存的是 unicode-escape 字符串 (如 "\\u4e8c\\u6b21..."),
+        # 直接 LIKE '%中文%' 不命中。这里分两步:
+        #   1) 先按 user_id 过滤 (避免全表)
+        #   2) Python 层在 knowledge_tags list 里匹配
+        # 错题本数据量通常 < 1000 条, 这步很便宜
+        candidates = q.all()
+        items = []
+        for r in candidates:
+            tags = r.knowledge_tags if isinstance(r.knowledge_tags, list) else []
+            if any(knowledge_tag in (t or "") for t in tags):
+                items.append(r)
+    else:
+        items = q.order_by(ResourceORM.created_at.desc()).all()
+    if not knowledge_tag and search:
         like = f"%{search}%"
-        q = q.filter(
+        # 已经过滤完了, 直接搜 (knowledge_tag 走的是另一条路径)
+        items = q.filter(
             (ResourceORM.title.like(like)) |
             (ResourceORM.content.like(like)) |
             (ResourceORM.knowledge_point.like(like)) |
             (ResourceORM.notes.like(like))
-        )
-    items = q.order_by(ResourceORM.created_at.desc()).all()
+        ).order_by(ResourceORM.created_at.desc()).all()
+    elif not knowledge_tag:
+        items = q.order_by(ResourceORM.created_at.desc()).all()
     return {"total": len(items), "items": [_serialize(r) for r in items]}
+
+
+@router.get("/knowledge-tags")
+async def list_knowledge_tags(user_id: int = 1, db: Session = Depends(get_db)):
+    """v2.0: 拉该用户所有错题用过的 knowledge_tags (去重), 给前端"按知识点筛选"下拉"""
+    items = (
+        db.query(ResourceORM.knowledge_tags)
+        .filter(ResourceORM.user_id == user_id, ResourceORM.type == "mistake")
+        .all()
+    )
+    tag_set: set[str] = set()
+    for (tags,) in items:
+        if isinstance(tags, list):
+            for t in tags:
+                if isinstance(t, str) and t.strip():
+                    tag_set.add(t.strip())
+    return {"tags": sorted(tag_set)}
 
 
 @router.get("/{resource_id}")
@@ -115,6 +151,8 @@ async def create_resource(
     subject: str = Form(""),
     tags: str = Form("[]"),
     knowledge_point: str = Form(""),
+    knowledge_tags: str = Form("[]"),  # v2.0: 知识点标签 (LLM 自动打)
+    difficulty: int = Form(3),         # v2.0: 难度 1-5
     error_type: str = Form(""),
     notes: str = Form(""),
     solution: str = Form(""),
@@ -138,6 +176,26 @@ async def create_resource(
         tags_list = json.loads(tags) if tags else []
     except Exception:
         tags_list = []
+    try:
+        knowledge_tags_list = json.loads(knowledge_tags) if knowledge_tags else []
+    except Exception:
+        knowledge_tags_list = []
+
+    # v2.0: 错题自动打标签 — 如果是 mistake 且没传 knowledge_tags, 调 LLM 兜底打
+    if type == "mistake" and not knowledge_tags_list:
+        try:
+            from app.agent.prompts.taggers.mistake_tagger import tag_mistake
+            knowledge_tags_list, suggested_difficulty = await tag_mistake(
+                title=title, content=content or "", subject=subject or ""
+            )
+            if difficulty == 3 and suggested_difficulty:  # 只在用户没显式传时覆盖
+                difficulty = suggested_difficulty
+        except Exception as e:
+            logger.warning(f"mistake_tagger failed (non-fatal): {e}")
+            # 兜底: 空 tags, 难度保留默认 3
+
+    # 难度兜底 1-5
+    difficulty = max(1, min(5, int(difficulty or 3)))
 
     # Auto-generate code
     code = generate_code(db, user_id, type)
@@ -152,6 +210,8 @@ async def create_resource(
         subject=subject or None,
         tags=tags_list,
         knowledge_point=knowledge_point or None,
+        knowledge_tags=knowledge_tags_list,  # v2.0
+        difficulty=difficulty,              # v2.0
         error_type=error_type or None,
         notes=notes or None,
         solution=solution or None,
@@ -173,16 +233,23 @@ async def create_resource(
             "title": title,
             "subject": subject or "",
             "knowledge_point": knowledge_point or "",
+            "knowledge_tags": knowledge_tags_list,  # v2.0: 进 RAG 元数据
+            "difficulty": str(difficulty),
             "file_path": file_path or "",
         },
     )
-    logger.info(f"Created {code} (RAG indexed: {rag_ok})")
+    logger.info(
+        f"Created {code} (RAG indexed: {rag_ok}, "
+        f"knowledge_tags={knowledge_tags_list}, difficulty={difficulty})"
+    )
 
     return {
         "id": resource.id,
         "code": code,
         "message": f"Created {code}",
         "rag_indexed": rag_ok,
+        "knowledge_tags": knowledge_tags_list,  # v2.0: 回传前端, 让 UI 立刻显示
+        "difficulty": difficulty,
     }
 
 
@@ -194,6 +261,8 @@ async def update_resource(
     subject: str = Form(None),
     tags: str = Form(None),
     knowledge_point: str = Form(None),
+    knowledge_tags: str = Form(None),  # v2.0
+    difficulty: int = Form(None),       # v2.0
     error_type: str = Form(None),
     mastered: str = Form(None),
     notes: str = Form(None),
@@ -213,6 +282,11 @@ async def update_resource(
         try: resource.tags = json.loads(tags) if tags else []
         except Exception: pass
     if knowledge_point is not None: resource.knowledge_point = knowledge_point or None
+    if knowledge_tags is not None:
+        try: resource.knowledge_tags = json.loads(knowledge_tags) if knowledge_tags else []
+        except Exception: pass
+    if difficulty is not None:
+        resource.difficulty = max(1, min(5, int(difficulty)))
     if error_type is not None: resource.error_type = error_type or None
     if mastered is not None: resource.mastered = mastered.lower() == "true" if isinstance(mastered, str) else bool(mastered)
     if notes is not None: resource.notes = notes or None
@@ -234,6 +308,8 @@ async def update_resource(
             "title": resource.title,
             "subject": resource.subject or "",
             "knowledge_point": resource.knowledge_point or "",
+            "knowledge_tags": resource.knowledge_tags or [],
+            "difficulty": str(resource.difficulty or 3),
         },
     )
     return {"message": "Updated", "id": resource_id}

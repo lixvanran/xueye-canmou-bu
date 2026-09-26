@@ -29,6 +29,11 @@ def build_rag_content(resource: ResourceORM) -> str:
         parts.append(f"学科: {resource.subject}")
     if resource.knowledge_point:
         parts.append(f"知识点: {resource.knowledge_point}")
+    # v2.0: 知识图谱标签 + 难度进 RAG 文本
+    if resource.knowledge_tags:
+        parts.append(f"知识标签: {', '.join(resource.knowledge_tags)}")
+    if resource.difficulty:
+        parts.append(f"难度: {resource.difficulty}/5")
     if resource.error_type:
         parts.append(f"错误类型: {resource.error_type}")
     if resource.content:

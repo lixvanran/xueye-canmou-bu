@@ -71,6 +71,17 @@ export interface UserProfile {
   target?: string | null
   interests?: string | null
   background?: string | null
+  // v2.0: profile 扩展字段 (由 backend-architecture 任务同步添加)
+  stage?: string | null
+  direction?: string | null
+  language?: string | null
+  agent_name?: string | null
+  // v2.0: 精简版前端表单字段 (mistakes-knowledge-graph 任务添加)
+  subject_choice?: string  // 选科 (如 "物化生")
+  target_school?: string   // 目标院校
+  target_major?: string    // 目标专业
+  interest?: string        // 兴趣方向 (替代老 interests)
+  notes?: string           // 备注 (替代老 background)
 }
 
 export interface EducationStageOption {
@@ -90,6 +101,9 @@ export interface Resource {
   subject?: string | null
   tags: string[]
   knowledge_point?: string | null
+  // v2.0: 知识图谱
+  knowledge_tags?: string[]
+  difficulty?: number  // 1-5
   error_type?: string | null
   mastered: boolean
   notes?: string | null
@@ -97,4 +111,29 @@ export interface Resource {
   thinking?: string | null
   created_at: string
   updated_at?: string
+}
+
+// v2.0: 错题薄弱点
+export interface WeakTopic {
+  tag: string
+  weight: number
+  mistake_count: number
+  unmastered_count: number
+  difficulty_avg: number | null
+}
+export interface WeakTopicsResponse {
+  user_id: number
+  total_mistakes: number
+  unmastered_count: number
+  top_k: number
+  weak_topics: WeakTopic[]
+  all_topics?: WeakTopic[]
+}
+
+// v2.0: User profile view
+export interface ProfileViewResponse {
+  user_id: number
+  raw_profile: Record<string, any>
+  derived_rules: string[]
+  preview_prompt: string
 }

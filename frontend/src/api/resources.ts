@@ -7,6 +7,7 @@ export const listResources = (params?: {
   subject?: string
   search?: string
   user_id?: number
+  knowledge_tag?: string  // v2.0: 按知识点标签筛选
 }) =>
   api.get<{ total: number; items: Resource[] }>('/resources/list', { params }).then(r => r.data)
 
@@ -34,3 +35,7 @@ export const getResource = (id: number) =>
 
 export const searchResources = (query: string, top_k = 5, type?: string) =>
   api.post('/resources/search', null, { params: { query, top_k, type } }).then(r => r.data)
+
+/** v2.0: 拉该用户所有用过的 knowledge_tags (给前端"按知识点筛选"下拉) */
+export const listKnowledgeTags = (user_id = 1) =>
+  api.get<{ tags: string[] }>('/resources/knowledge-tags', { params: { user_id } }).then(r => r.data)
