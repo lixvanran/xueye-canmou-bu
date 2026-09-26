@@ -7,12 +7,20 @@
  *  - 每个 tab 独立 conversation_id (本地状态占位)
  *
  * "随便聊聊" tab 加人格下拉, 选中调用 POST /api/agent/persona (后端本期返回 501)
+ *
+ * v2.0 增量:
+ *  - 顶部历史会话搜索框 + scenario 过滤 chip
+ *  - 答疑 tab 加 "帮我安排学习计划" quick action (触发 chat message 走 schedule 工具)
  */
 import { useState, useEffect, useRef } from 'react'
-import { MessageSquare, GraduationCap, MessageCircle, ChevronDown, Loader2, AlertCircle, CheckCircle2, UserCircle2, BookOpen, Target, X, Sparkles } from 'lucide-react'
+import {
+  MessageSquare, GraduationCap, MessageCircle, ChevronDown, Loader2, AlertCircle, CheckCircle2,
+  UserCircle2, BookOpen, Target, X, Sparkles, Search, Calendar, Clock, ArrowRight,
+} from 'lucide-react'
 import api from '@/api/client'
 import { listResources } from '@/api/resources'
 import { getWeakTopics } from '@/api/workspace'
+import { getConversation } from '@/api/conversations'
 import type { Resource, WeakTopic, WeakTopicsResponse } from '@/types'
 
 type ChatTab = 'qa' | 'volunteer' | 'chitchat'
@@ -61,6 +69,30 @@ const PERSONAS: Array<{ value: string; label: string; desc: string }> = [
   { value: 'senior_sister', label: '学姐', desc: '温和耐心, 经验分享' },
   { value: 'humor_master', label: '段子手', desc: '轻松幽默, 化解压力' },
 ]
+
+// v2.0: scenario label 映射 (search 结果用)
+const SCENARIO_LABEL: Record<string, string> = {
+  chat: '答疑',
+  exam: '答疑(学习)',
+  volunteer: '报志愿',
+  chitchat: '随便聊聊',
+}
+
+function formatTime(iso?: string | null): string {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    const now = new Date()
+    const diff = (now.getTime() - d.getTime()) / 1000
+    if (diff < 60) return '刚刚'
+    if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
+    if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`
+    if (diff < 86400 * 7) return `${Math.floor(diff / 86400)} 天前`
+    return d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+  } catch {
+    return iso
+  }
+}
 
 const DEFAULT_TAB: ChatTab = 'qa'
 
@@ -123,6 +155,22 @@ export default function ChatPage() {
   const [weakTopics, setWeakTopics] = useState<WeakTopicsResponse | null>(null)
   const [weakTopicsLoading, setWeakTopicsLoading] = useState(false)
 
+  // v2.0: 历史会话搜索
+  const [searchQ, setSearchQ] = useState('')
+  const [searchScenario, setSearchScenario] = useState<'' | 'all' | 'chat' | 'exam' | 'volunteer' | 'chitchat'>('all')
+  const [searchResults, setSearchResults] = useState<Array<{
+    id: number; title: string; scenario: string; updated_at: string; hit_count?: number
+  }>>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchErr, setSearchErr] = useState<string | null>(null)
+  const [openingConvId, setOpeningConvId] = useState<number | null>(null)
+  const [openConvMsg, setOpenConvMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // v2.0: 安排学习计划 quick action 提示
+  const [scheduleActionMsg, setScheduleActionMsg] = useState<{ type: 'ok' | 'info'; text: string } | null>(null)
+
   // 持久化 active tab
   useEffect(() => {
     try {
@@ -148,6 +196,76 @@ export default function ChatPage() {
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [personaOpen])
+
+  // v2.0: 历史会话搜索 (debounce 300ms)
+  useEffect(() => {
+    if (!searchOpen) return
+    setSearchErr(null)
+    const timer = setTimeout(async () => {
+      setSearchLoading(true)
+      try {
+        const params = new URLSearchParams()
+        params.set('q', searchQ.trim())
+        params.set('limit', '20')
+        params.set('user_id', '1')
+        if (searchScenario && searchScenario !== 'all') {
+          params.set('scenario', searchScenario)
+        }
+        const r = await fetch(`/api/conversations/search?${params.toString()}`)
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        const data = await r.json()
+        setSearchResults(Array.isArray(data.items) ? data.items : [])
+      } catch (e: any) {
+        setSearchErr(e?.message || '搜索失败')
+        setSearchResults([])
+      } finally {
+        setSearchLoading(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQ, searchScenario, searchOpen])
+
+  // v2.0: 打开某个历史会话
+  const handleOpenConversation = async (convId: number, scenario: string) => {
+    setOpeningConvId(convId)
+    setOpenConvMsg(null)
+    try {
+      const data = await getConversation(convId)
+      // 把消息塞到当前 in-memory buffer
+      setMessages(data.messages || [])
+      setSearchOpen(false)
+      setSearchQ('')
+      // 切到对应 tab (用场景映射)
+      const mapped: Record<string, ChatTab> = {
+        chat: 'qa',
+        exam: 'qa',
+        volunteer: 'volunteer',
+        chitchat: 'chitchat',
+      }
+      const targetTab = mapped[scenario] || 'qa'
+      if (targetTab !== activeTab) {
+        switchTab(targetTab)
+      }
+      setConvIds(prev => ({ ...prev, [targetTab]: convId }))
+      setOpenConvMsg({ type: 'ok', text: `已打开会话 #${convId}: ${data.title || '(无标题)'}` })
+      setTimeout(() => setOpenConvMsg(null), 2500)
+    } catch (e: any) {
+      setOpenConvMsg({ type: 'err', text: `打开失败: ${e?.message || '?'}` })
+    } finally {
+      setOpeningConvId(null)
+    }
+  }
+
+  // v2.0: 安排学习计划 quick action
+  const handleScheduleQuickAction = () => {
+    const goal = '请帮我安排下周 (从今天起 7 天) 的数学复习计划, 每天 1 个任务, 兼顾错题巩固 + 新知识预习。完成后调用 schedule 工具把计划写进我的日程, 不要只口头说说。'
+    setInput(goal)
+    setScheduleActionMsg({
+      type: 'info',
+      text: '提示: Agent 在对话中会自动调用 schedule 工具生成日程, 完成后可到「日程」页查看。'
+    })
+    setTimeout(() => setScheduleActionMsg(null), 5000)
+  }
 
   const switchTab = (next: ChatTab) => {
     if (next === activeTab) return
@@ -252,7 +370,7 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-zinc-50 to-white">
       {/* 顶部 tab bar */}
-      <div className="border-b border-black/5 bg-white/60 backdrop-blur-xl">
+      <div className="border-b border-black/5 bg-white/60 backdrop-blur-xl relative">
         <div className="flex items-center px-6">
           {TABS.map((t) => {
             const Icon = t.icon
@@ -275,11 +393,147 @@ export default function ChatPage() {
               </button>
             )
           })}
-          <div className="ml-auto text-xs text-zinc-400">
-            v2.0 · 切换 tab 不带上下文
+
+          {/* v2.0: 历史会话搜索框 (右侧) */}
+          <div className="ml-auto flex items-center gap-2">
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQ}
+                onChange={(e) => {
+                  setSearchQ(e.target.value)
+                  setSearchOpen(true)
+                }}
+                onFocus={() => setSearchOpen(true)}
+                placeholder="搜索历史会话..."
+                className="pl-8 pr-3 py-1.5 bg-white border border-black/10 rounded-full text-xs w-56 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:w-72 transition-all"
+              />
+              {searchOpen && (
+                <button
+                  onClick={() => {
+                    setSearchOpen(false)
+                    searchInputRef.current?.blur()
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-500"
+                  title="关闭"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            <div className="text-xs text-zinc-400 hidden sm:block">
+              v2.0 · 切换 tab 不带上下文
+            </div>
           </div>
         </div>
+
+        {/* v2.0: 搜索结果下拉 */}
+        {searchOpen && (
+          <div className="absolute right-6 mt-1 bg-white border border-black/10 rounded-2xl shadow-xl z-30 w-[28rem] max-w-[calc(100vw-3rem)] overflow-hidden">
+            {/* scenario chip 过滤 */}
+            <div className="flex items-center gap-1.5 px-3 py-2 border-b border-black/5 bg-zinc-50/60 flex-wrap">
+              <span className="text-xs text-zinc-500">场景:</span>
+              {[
+                { v: 'all',       l: '全部' },
+                { v: 'chat',      l: '答疑' },
+                { v: 'exam',      l: '答疑(学习)' },
+                { v: 'volunteer', l: '报志愿' },
+                { v: 'chitchat',  l: '随便聊聊' },
+              ].map(c => (
+                <button
+                  key={c.v}
+                  onClick={() => setSearchScenario(c.v as any)}
+                  className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                    searchScenario === c.v
+                      ? 'bg-zinc-900 text-white border-zinc-900'
+                      : 'bg-white border-black/10 text-zinc-600 hover:bg-zinc-50'
+                  }`}
+                >
+                  {c.l}
+                </button>
+              ))}
+            </div>
+
+            {/* 结果 */}
+            <div className="max-h-80 overflow-y-auto">
+              {searchLoading ? (
+                <div className="px-4 py-6 text-center text-zinc-400 text-sm">
+                  <Loader2 size={18} className="animate-spin inline mr-1" />
+                  搜索中...
+                </div>
+              ) : searchErr ? (
+                <div className="px-4 py-4 text-sm text-red-600 flex items-start gap-2">
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                  <div>搜索失败: {searchErr}</div>
+                </div>
+              ) : searchResults.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <Search size={28} className="mx-auto text-zinc-200 mb-2" />
+                  <div className="text-sm text-zinc-500">
+                    {searchQ.trim() ? '没有匹配的会话' : '输入关键词搜索历史会话'}
+                  </div>
+                  <div className="text-xs text-zinc-400 mt-1">
+                    匹配标题 + 消息内容 (LIKE %q%)
+                  </div>
+                </div>
+              ) : (
+                <div className="divide-y divide-black/5">
+                  {searchResults.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => handleOpenConversation(r.id, r.scenario)}
+                      disabled={openingConvId === r.id}
+                      className="w-full text-left px-4 py-2.5 hover:bg-violet-50 transition-colors flex items-center gap-3 disabled:opacity-50"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-zinc-800 truncate">
+                          {r.title || `(无标题 #${r.id})`}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span className="px-1.5 py-0.5 bg-zinc-100 rounded text-zinc-600">
+                            {SCENARIO_LABEL[r.scenario] || r.scenario}
+                          </span>
+                          <span className="inline-flex items-center gap-0.5">
+                            <Clock size={10} />
+                            {formatTime(r.updated_at)}
+                          </span>
+                          {r.hit_count != null && (
+                            <span className="text-violet-600">
+                              命中 {r.hit_count} 条
+                            </span>
+                          )}
+                          <span className="text-zinc-400">#{r.id}</span>
+                        </div>
+                      </div>
+                      {openingConvId === r.id ? (
+                        <Loader2 size={14} className="animate-spin text-violet-500" />
+                      ) : (
+                        <ArrowRight size={14} className="text-zinc-400" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* v2.0: 打开历史会话的 toast 提示 (在主区内显示) */}
+      {openConvMsg && (
+        <div className="px-6 pt-2">
+          <div className={`max-w-3xl mx-auto rounded-xl px-3 py-2 text-xs border flex items-center gap-2 ${
+            openConvMsg.type === 'ok'
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            {openConvMsg.type === 'ok' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+            <span>{openConvMsg.text}</span>
+          </div>
+        </div>
+      )}
 
       {/* 主区 */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -298,30 +552,52 @@ export default function ChatPage() {
             )}
           </div>
 
-          {/* v2.0: 答疑 tab 专属快捷按钮 — 从错题本选题 + 分析薄弱点 */}
+          {/* v2.0: 答疑 tab 专属快捷按钮 — 从错题本选题 + 分析薄弱点 + 安排学习计划 */}
           {activeTab === 'qa' && (
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              <button
-                onClick={openMistakePicker}
-                className="flex items-center gap-3 px-4 py-3 bg-white border border-blue-200 rounded-2xl text-sm hover:border-blue-400 hover:bg-blue-50 transition-all shadow-sm"
-              >
-                <BookOpen size={18} className="text-blue-600 flex-shrink-0" />
-                <div className="text-left">
-                  <div className="font-semibold text-gray-800">从错题本选题</div>
-                  <div className="text-xs text-gray-500">选一道错题让 Agent 讲</div>
+            <>
+              <div className="mb-4 grid grid-cols-3 gap-3">
+                <button
+                  onClick={openMistakePicker}
+                  className="flex items-center gap-3 px-4 py-3 bg-white border border-blue-200 rounded-2xl text-sm hover:border-blue-400 hover:bg-blue-50 transition-all shadow-sm"
+                >
+                  <BookOpen size={18} className="text-blue-600 flex-shrink-0" />
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-800">从错题本选题</div>
+                    <div className="text-xs text-gray-500">选一道错题让 Agent 讲</div>
+                  </div>
+                </button>
+                <button
+                  onClick={openWeakTopics}
+                  className="flex items-center gap-3 px-4 py-3 bg-white border border-orange-200 rounded-2xl text-sm hover:border-orange-400 hover:bg-orange-50 transition-all shadow-sm"
+                >
+                  <Target size={18} className="text-orange-600 flex-shrink-0" />
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-800">分析薄弱点</div>
+                    <div className="text-xs text-gray-500">Top 5 知识盲点</div>
+                  </div>
+                </button>
+                <button
+                  onClick={handleScheduleQuickAction}
+                  className="flex items-center gap-3 px-4 py-3 bg-white border border-emerald-200 rounded-2xl text-sm hover:border-emerald-400 hover:bg-emerald-50 transition-all shadow-sm"
+                >
+                  <Calendar size={18} className="text-emerald-600 flex-shrink-0" />
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-800">帮我安排学习计划</div>
+                    <div className="text-xs text-gray-500">Agent 自动写日程</div>
+                  </div>
+                </button>
+              </div>
+              {scheduleActionMsg && (
+                <div className={`mb-4 rounded-xl px-3 py-2 text-xs border flex items-start gap-2 ${
+                  scheduleActionMsg.type === 'ok'
+                    ? 'bg-green-50 border-green-200 text-green-800'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                }`}>
+                  <Sparkles size={13} className="flex-shrink-0 mt-0.5" />
+                  <span>{scheduleActionMsg.text}</span>
                 </div>
-              </button>
-              <button
-                onClick={openWeakTopics}
-                className="flex items-center gap-3 px-4 py-3 bg-white border border-orange-200 rounded-2xl text-sm hover:border-orange-400 hover:bg-orange-50 transition-all shadow-sm"
-              >
-                <Target size={18} className="text-orange-600 flex-shrink-0" />
-                <div className="text-left">
-                  <div className="font-semibold text-gray-800">分析薄弱点</div>
-                  <div className="text-xs text-gray-500">Top 5 知识盲点</div>
-                </div>
-              </button>
-            </div>
+              )}
+            </>
           )}
 
           {/* v2.0: 错题选择面板 */}

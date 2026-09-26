@@ -17,20 +17,20 @@
     "electron:build:linux": "vite build && electron-builder --linux"
   },
   "dependencies": {
+    "axios": "^1.6.7",
+    "clsx": "^2.1.0",
+    "framer-motion": "^11.0.3",
+    "katex": "^0.16.9",
+    "lucide-react": "^0.344.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.0",
-    "zustand": "^4.5.0",
-    "axios": "^1.6.7",
     "react-markdown": "^9.0.1",
+    "react-router-dom": "^6.22.0",
+    "rehype-highlight": "^7.0.0",
+    "rehype-katex": "^7.0.0",
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
-    "rehype-katex": "^7.0.0",
-    "rehype-highlight": "^7.0.0",
-    "katex": "^0.16.9",
-    "framer-motion": "^11.0.3",
-    "lucide-react": "^0.344.0",
-    "clsx": "^2.1.0"
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.55",
@@ -73,7 +73,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "category": "public.app-category.education"
@@ -82,7 +85,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },

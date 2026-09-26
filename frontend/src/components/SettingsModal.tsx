@@ -3,12 +3,12 @@
 - 4 个 tab: API Key / API 状态 / 模型选择 / 消费
 - v2.0: key tab 加 Agent 称呼 文本框, 加 2 个 disabled 占位按钮
 */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Settings, RefreshCw, CheckCircle2, XCircle, AlertTriangle,
   ExternalLink, Copy, X, Zap, ChevronDown, ChevronRight,
   Server, Activity, Wallet, Save, Loader2, Key, Eye, EyeOff, Trash2,
-  Mic, Music2, Sparkles
+  Mic, Music2, Sparkles, Download, Upload, Database, AlertOctagon, FileJson, AlertCircle
 } from 'lucide-react'
 import api from '@/api/client'
 import { useAgentName } from '@/hooks/useAgentName'
@@ -487,6 +487,9 @@ function ApiKeyTab({ onKeyUpdated }: { onKeyUpdated: () => void }) {
             </button>
           </div>
         </div>
+
+        {/* v2.0: 数据管理 — 导出 / 导入 */}
+        <DataManagementSection />
       </div>
 
       {/* 流程说明 */}
@@ -496,6 +499,282 @@ function ApiKeyTab({ onKeyUpdated }: { onKeyUpdated: () => void }) {
         <div>2. 在输入框粘贴 → 点「测试 Key」验证 → 看账户信息</div>
         <div>3. 点「保存到 .env」写入 <span className="font-mono">backend/.env</span></div>
         <div>4. <span className="text-orange-600 font-medium">重启服务 (双击 启动.bat) 生效</span></div>
+      </div>
+    </div>
+  )
+}
+
+
+// ===== v2.0: 数据管理 (导出 / 导入) =====
+function DataManagementSection() {
+  const [exporting, setExporting] = useState(false)
+  const [exportMsg, setExportMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [exportMeta, setExportMeta] = useState<{ filename: string; bytes: number } | null>(null)
+
+  const [importMode, setImportMode] = useState<'merge' | 'overwrite'>('merge')
+  const [importing, setImporting] = useState(false)
+  const [importMsg, setImportMsg] = useState<{ type: 'ok' | 'err'; text: string; counts?: Record<string, number> } | null>(null)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleExport = async () => {
+    setExporting(true)
+    setExportMsg(null)
+    setExportMeta(null)
+    try {
+      const r = await fetch('/api/user/export?user_id=1')
+      if (!r.ok) {
+        const text = await r.text().catch(() => '')
+        throw new Error(`HTTP ${r.status} ${text || ''}`.trim())
+      }
+      const data = await r.json()
+      const jsonStr = JSON.stringify(data, null, 2)
+      const blob = new Blob([jsonStr], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const date = new Date()
+      const y = date.getFullYear()
+      const m = String(date.getMonth() + 1).padStart(2, '0')
+      const d = String(date.getDate()).padStart(2, '0')
+      const filename = `localagent-export-${y}-${m}-${d}.json`
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setExportMeta({ filename, bytes: blob.size })
+      setExportMsg({
+        type: 'ok',
+        text: `已导出 ${filename} (${(blob.size / 1024).toFixed(1)} KB)`,
+      })
+      setTimeout(() => setExportMsg(null), 4000)
+    } catch (e: any) {
+      setExportMsg({ type: 'err', text: `导出失败: ${e?.message || '?'}` })
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handlePickFile = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setPendingFile(f)
+    setImportMsg(null)
+    // 选完文件自动触发预览 (读 JSON), 让用户看到内容再决定是否导入
+    void runImport(f, importMode, false)
+  }
+
+  const runImport = async (file: File, mode: 'merge' | 'overwrite', confirmed: boolean) => {
+    if (mode === 'overwrite' && !confirmed) {
+      if (!confirm(
+        `确定要以「覆盖」模式导入?\n\n` +
+        `覆盖会清空现有 profile / conversations / facts / resources / schedules, 再从文件恢复。\n` +
+        `建议先用「合并」模式导入试试效果, 再决定是否覆盖。\n\n` +
+        `继续覆盖导入?`
+      )) {
+        return
+      }
+    }
+    setImporting(true)
+    setImportMsg(null)
+    try {
+      const text = await file.text()
+      let payload: any
+      try {
+        payload = JSON.parse(text)
+      } catch (parseErr: any) {
+        throw new Error(`JSON 解析失败: ${parseErr?.message || parseErr}`)
+      }
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('JSON 顶层必须是对象')
+      }
+      const r = await fetch(`/api/user/import?user_id=1&mode=${mode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!r.ok) {
+        const errText = await r.text().catch(() => '')
+        let detail = errText
+        try {
+          const j = JSON.parse(errText)
+          detail = j.detail || j.message || errText
+        } catch { /* keep errText */ }
+        throw new Error(`HTTP ${r.status}: ${detail || '?'}`)
+      }
+      const data = await r.json()
+      const counts = data.imported || {}
+      setImportMsg({
+        type: 'ok',
+        text: `导入完成 (mode=${mode}) · ${Object.entries(counts).map(([k, v]) => `${k}=${v}`).join(', ')}`,
+        counts,
+      })
+      setPendingFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      setTimeout(() => setImportMsg(null), 6000)
+    } catch (e: any) {
+      setImportMsg({ type: 'err', text: `导入失败: ${e?.message || '?'}` })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleConfirmImport = () => {
+    if (!pendingFile) {
+      handlePickFile()
+      return
+    }
+    void runImport(pendingFile, importMode, true)
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <Database size={14} className="text-indigo-500" />
+        <div className="text-sm font-medium text-gray-700">数据管理</div>
+        <span className="text-xs text-gray-400">导出 / 导入 (JSON)</span>
+      </div>
+
+      {/* 导出 */}
+      <div className="border border-black/5 rounded-md p-3 bg-zinc-50/40">
+        <div className="flex items-center gap-2 mb-2">
+          <FileJson size={13} className="text-blue-600" />
+          <div className="text-xs font-medium text-gray-700">导出我的数据</div>
+        </div>
+        <p className="text-xs text-gray-500 mb-2">
+          把 profile / conversations / facts / resources / schedules 一并打包为 JSON, 浏览器自动下载。
+        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            {exporting ? '导出中...' : '导出我的数据'}
+          </button>
+          {exportMeta && (
+            <span className="text-xs text-gray-500 font-mono">
+              {exportMeta.filename} · {exportMeta.bytes.toLocaleString()} bytes
+            </span>
+          )}
+        </div>
+        {exportMsg && (
+          <div className={`mt-2 rounded-md p-2 text-xs border flex items-start gap-1.5 ${
+            exportMsg.type === 'ok'
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            {exportMsg.type === 'ok' ? <CheckCircle2 size={12} className="flex-shrink-0 mt-0.5" /> : <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />}
+            <span>{exportMsg.text}</span>
+          </div>
+        )}
+      </div>
+
+      {/* 导入 */}
+      <div className="border border-black/5 rounded-md p-3 bg-zinc-50/40">
+        <div className="flex items-center gap-2 mb-2">
+          <Upload size={13} className="text-emerald-600" />
+          <div className="text-xs font-medium text-gray-700">导入数据</div>
+        </div>
+        <p className="text-xs text-gray-500 mb-2">
+          选一个之前导出的 JSON 文件, 把数据恢复到当前用户。
+        </p>
+
+        {/* 模式选择 */}
+        <div className="mb-2 flex items-center gap-3 text-xs">
+          <span className="text-gray-600">模式:</span>
+          <label className="inline-flex items-center gap-1 cursor-pointer">
+            <input
+              type="radio"
+              name="import-mode"
+              value="merge"
+              checked={importMode === 'merge'}
+              onChange={() => setImportMode('merge')}
+              className="text-emerald-500 focus:ring-emerald-500"
+            />
+            <span>合并 (默认)</span>
+          </label>
+          <label className="inline-flex items-center gap-1 cursor-pointer">
+            <input
+              type="radio"
+              name="import-mode"
+              value="overwrite"
+              checked={importMode === 'overwrite'}
+              onChange={() => setImportMode('overwrite')}
+              className="text-red-500 focus:ring-red-500"
+            />
+            <span className={importMode === 'overwrite' ? 'text-red-600 font-medium' : ''}>覆盖</span>
+          </label>
+          {importMode === 'overwrite' && (
+            <span className="inline-flex items-center gap-1 text-xs text-red-600">
+              <AlertOctagon size={11} />
+              会清空现有数据
+            </span>
+          )}
+        </div>
+
+        {/* 文件选择 + 隐藏 file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handlePickFile}
+            disabled={importing}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-emerald-300 text-emerald-700 rounded-md hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {importing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+            {pendingFile ? '重选文件' : '选择 JSON 文件'}
+          </button>
+          {pendingFile && (
+            <>
+              <span className="text-xs text-gray-600 font-mono truncate max-w-[14rem]" title={pendingFile.name}>
+                {pendingFile.name} · {(pendingFile.size / 1024).toFixed(1)} KB
+              </span>
+              <button
+                onClick={handleConfirmImport}
+                disabled={importing}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                  importMode === 'overwrite'
+                    ? 'bg-red-500 hover:bg-red-600'
+                    : 'bg-emerald-500 hover:bg-emerald-600'
+                }`}
+              >
+                {importing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                确认导入 ({importMode})
+              </button>
+            </>
+          )}
+        </div>
+        {importMsg && (
+          <div className={`mt-2 rounded-md p-2 text-xs border ${
+            importMsg.type === 'ok'
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            <div className="flex items-start gap-1.5">
+              {importMsg.type === 'ok' ? <CheckCircle2 size={12} className="flex-shrink-0 mt-0.5" /> : <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />}
+              <div>
+                <div>{importMsg.text}</div>
+                {importMsg.counts && (
+                  <div className="text-xs mt-1 font-mono opacity-70">
+                    {JSON.stringify(importMsg.counts)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
