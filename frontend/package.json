@@ -2,7 +2,7 @@
   "name": "teacher_zhang-frontend",
   "productName": "张老师智能体",
   "private": true,
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "AI 备考与志愿填报助手",
   "author": "Mavis",
   "main": "electron/main.cjs",

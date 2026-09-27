@@ -1,6 +1,6 @@
 @echo off
 REM ===========================================
-REM   ZhangXuefengAgent v0.1.6 - One-Click Launcher
+REM   ZhangXuefengAgent v0.1.7 - One-Click Launcher
 REM   NO chcp (causes flash close in Win11 Chinese)
 REM   Pure ASCII, no BOM
 REM ===========================================
@@ -9,7 +9,7 @@ cd /d "%~dp0"
 
 echo.
 echo ============================================
-echo   ZhangXuefengAgent v0.1.6
+echo   ZhangXuefengAgent v0.1.7
 echo   (Local Agent Platform)
 echo ============================================
 echo.

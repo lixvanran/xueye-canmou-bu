@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "张雪峰智能体"
-    APP_VERSION: str = "0.1.6"  # v0.1.6: v2.0 大换血 — 5 页面架构 + nuwa 框架 + 个人画像精简 + 错题知识图谱 + 历史搜索 + 数据导出导入
+    APP_VERSION: str = "0.1.7"  # v0.1.7: 参赛核心 (Agent 全过程可视化) + 多角色实际接入 + 画像可视化 + 学习轨迹图 + 6 P0/4 P1 修复
     DEBUG: bool = True
 
     # Server
