@@ -466,9 +466,9 @@ export default function ChatPage() {
     setPersonaLoading(true)
     setPersonaMsg(null)
     try {
-      // 后端本期返回 501, 这里捕获 501 弹提示
-      await api.post('/agent/persona', { persona: next })
-      setPersonaMsg({ type: 'ok', text: `已切换人格: ${PERSONAS.find(p => p.value === next)?.label || next}` })
+      // v0.1.7: 端点真接上了 (后端 POST /api/user/persona)
+      await api.post('/user/persona', { persona: next })
+      setPersonaMsg({ type: 'ok', text: `已切换人格: ${PERSONAS.find(p => p.value === next)?.label || next} (下次对话生效)` })
     } catch (e: any) {
       const status = e?.response?.status
       const detail = e?.response?.data?.detail || e?.message || '请求失败'

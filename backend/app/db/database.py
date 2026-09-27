@@ -29,6 +29,8 @@ class UserORM(Base):
     language = Column(String(16), default="中文")
     # Agent 称呼 (替代硬编码"张老师"). 默认 "张老师" 保持向后兼容
     agent_name = Column(String(64), default="张老师")
+    # v0.1.7: Agent 人格 (teacher_zhang / xuejie / duanzishou 等) — 实际生效到 system prompt
+    persona = Column(String(32), default="teacher_zhang")
 
     # ---- v0.x 老字段 (schema 迁移保留, 默认 NULL, 不再由前端写入) ----
     # birthday = Column(String(32), nullable=True)

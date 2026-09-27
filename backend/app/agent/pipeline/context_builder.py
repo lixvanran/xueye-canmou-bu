@@ -50,6 +50,7 @@ def _build_profile_injection(user_profile: dict) -> str:
     - stage=='初中': 用初中方法, 不引入高中公式
     - language=='英文': 回复以英文为主
     - agent_name 非默认 ('张老师'): 改称谓
+    - persona: 注入对应人格 prompt (teacher_zhang/xuejie/duanzishou)
     - 调用方负责 skip scenario='volunteer' (其 persona 已自带张雪峰风格)
     """
     if not user_profile:
@@ -90,6 +91,25 @@ def _build_profile_injection(user_profile: dict) -> str:
         blocks.append(
             f"你叫 {agent_name}, 不要自称'张老师'或'老张'等默认称呼"
         )
+
+    # v0.1.7: persona 注入 (实际生效人格到 system prompt)
+    persona = (user_profile.get("persona") or "teacher_zhang").strip()
+    if persona == "xuejie":
+        blocks.append(
+            "## 人格: 学姐风格\n"
+            "- 语气温和亲切, 像过来人分享经验\n"
+            "- 多用'我当年''我当时'等第一人称代入\n"
+            "- 给建议时常加'你试试''我建议你'等温和措辞\n"
+            "- 不端架子, 鼓励学生提问"
+        )
+    elif persona == "duanzishou":
+        blocks.append(
+            "## 人格: 段子手风格\n"
+            "- 幽默轻松, 偶尔抛梗, 但不油腻\n"
+            "- 知识点讲完会加个梗或冷笑话辅助记忆\n"
+            "- 但严肃问题 (志愿/考试) 别抖机灵, 该正经正经"
+        )
+    # teacher_zhang 不需要注入 (scenario prompt 已自带)
 
     if not blocks:
         return ""

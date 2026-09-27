@@ -30,6 +30,8 @@ class ProfileUpdate(BaseModel):
     agent_name: Optional[str] = None           # Agent 称呼
     direction: Optional[str] = None            # 目标方向
     language: Optional[str] = None             # 语言偏好
+    # v0.1.7: Agent 人格 (teacher_zhang / xuejie / duanzishou)
+    persona: Optional[str] = None
     # 老字段 (UserORM 有列)
     education_stage: Optional[str] = None
     province: Optional[str] = None
@@ -100,6 +102,10 @@ async def update_profile(
     if payload.agent_name is not None:
         # 核心修复目标 — 前端 PUT body 现在能正确保存
         user.agent_name = payload.agent_name or "张老师"
+    if payload.persona is not None:
+        # v0.1.7: 切换 Agent 人格 (实际生效到 system prompt)
+        # 允许值: teacher_zhang / xuejie / duanzishou / custom
+        user.persona = payload.persona or "teacher_zhang"
     if payload.direction is not None:
         user.direction = payload.direction or ""
     if payload.language is not None:
@@ -175,6 +181,8 @@ def _serialize_profile(user: UserORM) -> dict:
         "interest": user.interests or "",
         "notes": user.background or "",
         "agent_name": user.agent_name or "张老师",
+        # v0.1.7: Agent 人格 (实际生效到 system prompt)
+        "persona": getattr(user, "persona", None) or "teacher_zhang",
         # 配置字段
         "direction": user.direction or "",
         "language": user.language or "中文",
@@ -254,6 +262,54 @@ async def profile_view(user_id: int = 1, db: Session = Depends(get_db)):
         "derived_rules": derived_rules,
         "preview_prompt": profile_block + ("\n" + stage_injection if stage_injection else ""),
     }
+
+
+# ========== v0.1.7: Agent 人格 (实际生效到 system prompt) ==========
+
+AVAILABLE_PERSONAS = [
+    {"value": "teacher_zhang", "label": "张老师", "desc": "严厉直接, 一针见血 (默认, 适合志愿填报)", "scenario_fit": ["chat", "exam", "volunteer"]},
+    {"value": "xuejie", "label": "学姐", "desc": "温和亲切, 用过来人经验, 适合答疑和陪伴", "scenario_fit": ["chat", "exam"]},
+    {"value": "duanzishou", "label": "段子手", "desc": "幽默轻松, 适合随便聊聊", "scenario_fit": ["chitchat"]},
+]
+
+
+@router.get("/personas")
+async def list_personas():
+    """列出可选的 Agent 人格 (含适用 scenario)"""
+    return {"personas": AVAILABLE_PERSONAS}
+
+
+@router.get("/persona")
+async def get_persona(user_id: int = 1, db: Session = Depends(get_db)):
+    """读当前用户的人格"""
+    user = db.query(UserORM).filter_by(id=user_id).first()
+    if not user:
+        return {"persona": "teacher_zhang"}
+    return {"persona": getattr(user, "persona", None) or "teacher_zhang"}
+
+
+@router.post("/persona")
+async def set_persona(
+    persona: str = Body(..., embed=True),
+    user_id: int = 1,
+    db: Session = Depends(get_db),
+):
+    """v0.1.7: 切换 Agent 人格 — 立即生效 (下次 chat 自动用新 persona)"""
+    valid_values = [p["value"] for p in AVAILABLE_PERSONAS]
+    if persona not in valid_values and persona != "custom":
+        raise HTTPException(
+            status_code=400,
+            detail=f"未知 persona: {persona!r}. 可选: {valid_values}"
+        )
+    user = db.query(UserORM).filter_by(id=user_id).first()
+    if not user:
+        user = UserORM(id=user_id, name="Student")
+        db.add(user)
+        db.flush()
+    user.persona = persona
+    db.commit()
+    db.refresh(user)
+    return {"message": "Persona updated", "persona": persona, "persona_label": next((p["label"] for p in AVAILABLE_PERSONAS if p["value"] == persona), persona)}
 
 
 # ========== Education stages ==========
@@ -490,3 +546,129 @@ async def import_data(
     db.commit()
 
     return {"message": f"导入完成 (mode={mode})", "imported": counts}
+
+# ========== v0.1.7: 学情统计 + 学习轨迹 (画像可视化 + 学习轨迹图) ==========
+
+@router.get("/profile-stats")
+async def profile_stats(user_id: int = 1, db: Session = Depends(get_db)):
+    """v0.1.7: 学情统计 — 用于画像页雷达图
+
+    返回:
+    - by_subject: {数学: 5, 物理: 3} 各学科错题数
+    - by_difficulty: {1: 1, 2: 2, 3: 4, 4: 0, 5: 0} 各难度错题数
+    - mastered_rate: 已掌握比例 (0-1)
+    - knowledge_tags: top 10 知识点
+    - conversation_count: 历史会话数
+    """
+    from app.db.database import ResourceORM, ConversationORM, UserFactORM, MessageORM
+    from sqlalchemy import func
+
+    # 各学科错题数
+    by_subject = dict(
+        db.query(ResourceORM.subject, func.count(ResourceORM.id))
+        .filter(ResourceORM.user_id == user_id, ResourceORM.type == "mistake", ResourceORM.subject.isnot(None))
+        .group_by(ResourceORM.subject)
+        .all()
+    )
+    # 各难度错题数
+    by_difficulty = {}
+    for d in range(1, 6):
+        c = db.query(ResourceORM).filter_by(
+            user_id=user_id, type="mistake", difficulty=d
+        ).count()
+        if c > 0:
+            by_difficulty[d] = c
+    # 总错题 + 已掌握
+    total_mistakes = db.query(ResourceORM).filter_by(user_id=user_id, type="mistake").count()
+    mastered = db.query(ResourceORM).filter_by(user_id=user_id, type="mistake", mastered=True).count()
+    # 知识点 (从 knowledge_tags JSON 提取 - SQLite 直接 LIKE 不可靠, Python 层解析)
+    rows = db.query(ResourceORM.knowledge_tags).filter(
+        ResourceORM.user_id == user_id,
+        ResourceORM.type == "mistake",
+        ResourceORM.knowledge_tags.isnot(None),
+    ).all()
+    tag_count = {}
+    import json
+    for (raw,) in rows:
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except Exception:
+                continue
+        if isinstance(raw, list):
+            for t in raw:
+                if isinstance(t, str):
+                    tag_count[t] = tag_count.get(t, 0) + 1
+    top_tags = sorted(tag_count.items(), key=lambda x: -x[1])[:10]
+    # 会话数
+    conv_count = db.query(ConversationORM).filter_by(user_id=user_id).count()
+    msg_count = db.query(MessageORM).filter(
+        MessageORM.conversation_id.in_(
+            db.query(ConversationORM.id).filter_by(user_id=user_id)
+        )
+    ).count()
+
+    return {
+        "user_id": user_id,
+        "total_mistakes": total_mistakes,
+        "mastered": mastered,
+        "mastered_rate": round(mastered / total_mistakes, 3) if total_mistakes > 0 else 0,
+        "by_subject": by_subject,
+        "by_difficulty": by_difficulty,
+        "top_knowledge_tags": [{"tag": t, "count": c} for t, c in top_tags],
+        "conversation_count": conv_count,
+        "message_count": msg_count,
+    }
+
+
+@router.get("/learning-timeline")
+async def learning_timeline(
+    user_id: int = 1,
+    days: int = 30,
+    db: Session = Depends(get_db),
+):
+    """v0.1.7: 学习轨迹 — 按天聚合最近 N 天活动, 给前端画时间线
+
+    返回 [{date: "2026-09-27", mistakes_added: 2, schedules_done: 1, messages: 5}, ...]
+    """
+    from app.db.database import ResourceORM, ScheduleORM, ConversationORM, MessageORM
+    from datetime import datetime, timedelta
+
+    cutoff = datetime.now() - timedelta(days=days)
+    # 用 created_at 字段 (SQLite 没专门的 date 函数, 用 date() 转换)
+    timeline: dict = {}
+
+    # 错题 (按 created_at)
+    rows = db.query(ResourceORM.created_at).filter(
+        ResourceORM.user_id == user_id, ResourceORM.type == "mistake", ResourceORM.created_at >= cutoff
+    ).all()
+    for (ts,) in rows:
+        if ts:
+            d = ts.strftime("%Y-%m-%d")
+            t = timeline.setdefault(d, {"date": d, "mistakes_added": 0, "schedules_done": 0, "messages": 0})
+            t["mistakes_added"] += 1
+
+    # 日程完成 (用 updated_at 近似)
+    rows = db.query(ScheduleORM.updated_at).filter(
+        ScheduleORM.user_id == user_id, ScheduleORM.completed == True, ScheduleORM.updated_at >= cutoff
+    ).all()
+    for (ts,) in rows:
+        if ts:
+            d = ts.strftime("%Y-%m-%d")
+            t = timeline.setdefault(d, {"date": d, "mistakes_added": 0, "schedules_done": 0, "messages": 0})
+            t["schedules_done"] += 1
+
+    # 消息 (用 created_at)
+    rows = db.query(MessageORM.created_at).filter(
+        MessageORM.role == "user",
+        MessageORM.created_at >= cutoff,
+        MessageORM.conversation_id.in_(db.query(ConversationORM.id).filter_by(user_id=user_id))
+    ).all()
+    for (ts,) in rows:
+        if ts:
+            d = ts.strftime("%Y-%m-%d")
+            t = timeline.setdefault(d, {"date": d, "mistakes_added": 0, "schedules_done": 0, "messages": 0})
+            t["messages"] += 1
+
+    items = sorted(timeline.values(), key=lambda x: x["date"], reverse=True)
+    return {"days": days, "items": items}
