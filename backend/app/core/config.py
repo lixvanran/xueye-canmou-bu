@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     """App settings"""
 
     # App
-    APP_NAME: str = "张雪峰智能体"
-    APP_VERSION: str = "0.1.7"  # v0.1.7: 参赛核心 (Agent 全过程可视化) + 多角色实际接入 + 画像可视化 + 学习轨迹图 + 6 P0/4 P1 修复
+    APP_NAME: str = "LocalAgent"
+    APP_VERSION: str = "0.1.7"  # v0.1.7: 参赛核心 (Agent 全过程可视化 + 多角色实际接入 + 画像可视化 + 学习轨迹图) + 6 P0/4 P1 修复
     DEBUG: bool = True
 
     # Server

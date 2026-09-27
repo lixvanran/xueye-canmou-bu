@@ -1,6 +1,8 @@
-# 张雪峰智能体 v0.1.7
+# LocalAgent v0.1.7
 
-一个本地部署的 AI 学习与志愿助手，专为高考场景设计。基于多智能体协作 + RAG 知识库 + 工具调用，提供三个核心场景：智能对话、资料库、个人中心。
+**本地化 AI Agent 平台** — 多智能体协作 + RAG 知识库 + 工具调用。
+
+本地部署、开箱即用的 Agent 框架: 三大核心场景(智能对话 / 资料库 / 个人中心)、3 种可切换 Persona(张老师 / 学姐 / 段子手, 蒸馏自 nuwa-skill 开源项目的真实思维框架)、完整运行过程可视化(8 步骤 trace 面板)、学情雷达 + 学习轨迹可视化。
 
 仅供学习交流。
 
@@ -200,6 +202,6 @@ MIT —— 学习和交流用途。请勿商用。
 
 ## 致谢
 
-- 张雪峰老师公开内容启发（仅作灵感来源，不冒名）
+- [nuwa-skill](https://github.com/alchaincyf) (alchaincyf, MIT) — 蒸馏张雪峰 / Naval / Musk 等真实人物的认知操作系统 (SKILL.md)
 - Eric-Yibo-Shen 与 zouchenzhen 的开源知识库（CC BY 4.0 / MIT）
 - OpenRouter 提供统一 LLM 路由

@@ -64,7 +64,7 @@ export default function App() {
           {/* v0.1.6: 主页标题用 useAgentName, 自定义名字全屏统一 */}
           <h1 className="text-lg font-bold tracking-tight">{agentName}</h1>
           <div className="text-xs text-zinc-500 mt-1">
-            智能体 · 当前称呼
+            LocalAgent · 当前称呼
           </div>
         </div>
 
@@ -108,12 +108,12 @@ export default function App() {
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             <span>服务运行中</span>
           </div>
-          <div className="mt-1.5 text-zinc-400">v2.0 frontend</div>
+          <div className="mt-1.5 text-zinc-400">LocalAgent v0.1.7</div>
         </div>
       </aside>
 
       <main className="flex-1 overflow-hidden relative z-0">
-        {page === 'today' && <TodayPage />}
+        {page === 'today' && <TodayPage onNavigate={(p) => setPage(p as PageKey)} />}
         {page === 'chat' && <ChatPage />}
         {page === 'schedule' && <SchedulePage />}
         {page === 'resources' && <ResourcesPage />}

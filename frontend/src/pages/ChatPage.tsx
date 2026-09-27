@@ -66,10 +66,12 @@ const TABS: TabConfig[] = [
   },
 ]
 
+// v0.1.7: PERSONAS 与后端 PERSONA_TEMPLATES + AVAILABLE_PERSONAS 同步
+// 来源: nuwa-skill 蒸馏的人物思维框架 (github.com/alchaincyf/zhangxuefeng-skill / naval-ravikant / elon-musk)
 const PERSONAS: Array<{ value: string; label: string; desc: string }> = [
-  { value: 'teacher_zhang', label: '张老师', desc: '严厉直接, 一针见血 (默认)' },
-  { value: 'senior_sister', label: '学姐', desc: '温和耐心, 经验分享' },
-  { value: 'humor_master', label: '段子手', desc: '轻松幽默, 化解压力' },
+  { value: 'teacher_zhang', label: '张老师', desc: 'nuwa-skill 蒸馏 · 5 心智模型 + 8 决策启发 · 适合志愿/考研/职业' },
+  { value: 'xuejie',        label: '学姐',   desc: 'nuwa-skill Naval 框架 · 串行复利 · 适合答疑陪伴' },
+  { value: 'duanzishou',    label: '段子手', desc: 'nuwa-skill Musk 框架 · 第一性原理 · 适合闲聊脑暴' },
 ]
 
 // v2.0: scenario label 映射 (search 结果用)
@@ -567,6 +569,25 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-zinc-50 to-white">
+      {/* v0.1.7: 顶层 persona 切换 toast (显示在 tab bar 下方) */}
+      {personaMsg && (
+        <div className={`mx-6 mt-2 flex items-center gap-2 text-xs rounded-lg px-3 py-1.5 border ${
+          personaMsg.type === 'ok'
+            ? 'bg-green-50 border-green-200 text-green-800'
+            : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          {personaMsg.type === 'ok' ? (
+            <CheckCircle2 size={12} />
+          ) : (
+            <AlertCircle size={12} />
+          )}
+          <span>{personaMsg.text}</span>
+          <button onClick={() => setPersonaMsg(null)} className="ml-auto opacity-50 hover:opacity-100">
+            <X size={10} />
+          </button>
+        </div>
+      )}
+
       {/* 顶部 tab bar */}
       <div className="border-b border-black/5 bg-white/60 backdrop-blur-xl relative">
         <div className="flex items-center px-6">
@@ -594,6 +615,48 @@ export default function ChatPage() {
 
           {/* v2.0: 历史会话搜索框 (右侧) */}
           <div className="ml-auto flex items-center gap-2">
+            {/* v0.1.7: 顶层 persona 下拉 — 所有 tab 都可切换, z-40 避免被遮 */}
+            <div className="relative" ref={personaMenuRef}>
+              <button
+                onClick={() => setPersonaOpen(o => !o)}
+                disabled={personaLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 border border-violet-200 rounded-full text-xs font-medium text-violet-700 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                title="切换 Agent 人格"
+              >
+                <UserCircle2 size={13} />
+                {PERSONAS.find(p => p.value === persona)?.label || persona}
+                {personaLoading ? (
+                  <Loader2 size={11} className="animate-spin" />
+                ) : (
+                  <ChevronDown size={11} />
+                )}
+              </button>
+              {personaOpen && (
+                <div className="absolute right-0 top-full mt-1 z-40 w-72 bg-white border border-black/10 rounded-xl shadow-xl overflow-hidden">
+                  <div className="px-3 py-2 border-b border-black/5 bg-zinc-50/60">
+                    <div className="text-xs font-semibold text-zinc-700">切换 Agent 人格</div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5">下次对话自动应用</div>
+                  </div>
+                  {PERSONAS.map(p => (
+                    <button
+                      key={p.value}
+                      onClick={() => handlePersonaChange(p.value)}
+                      disabled={personaLoading}
+                      className={`w-full flex flex-col items-start px-3 py-2.5 text-left text-sm hover:bg-violet-50 transition-colors disabled:opacity-50 border-b border-black/5 last:border-b-0 ${
+                        persona === p.value ? 'bg-violet-50' : ''
+                      }`}
+                    >
+                      <span className="font-medium text-zinc-800 flex items-center gap-2">
+                        {p.label}
+                        {persona === p.value && <CheckCircle2 size={12} className="text-violet-500" />}
+                      </span>
+                      <span className="text-xs text-zinc-500 mt-0.5">{p.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="relative">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input
@@ -920,70 +983,6 @@ export default function ChatPage() {
                     让 Agent 给出复习计划
                   </button>
                 </>
-              )}
-            </div>
-          )}
-
-          {/* chitchat tab 才显示人格下拉 */}
-          {activeTab === 'chitchat' && (
-            <div className="mb-5 bg-white/70 backdrop-blur border border-black/5 rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <UserCircle2 size={16} className="text-violet-500" />
-                <span className="text-sm font-semibold text-zinc-700">人格</span>
-                <span className="text-xs text-zinc-400">(切换人格本期返回 501, 仅 UI 演示)</span>
-              </div>
-              <div className="relative" ref={personaMenuRef}>
-                <button
-                  onClick={() => setPersonaOpen(o => !o)}
-                  disabled={personaLoading}
-                  className="w-full flex items-center justify-between px-3 py-2 bg-white border border-black/10 rounded-xl text-sm hover:border-violet-300 transition-colors disabled:opacity-50"
-                >
-                  <span>
-                    {PERSONAS.find(p => p.value === persona)?.label || persona}
-                    <span className="ml-2 text-xs text-zinc-400">
-                      {PERSONAS.find(p => p.value === persona)?.desc}
-                    </span>
-                  </span>
-                  {personaLoading ? (
-                    <Loader2 size={14} className="animate-spin text-violet-500" />
-                  ) : (
-                    <ChevronDown size={14} className="text-zinc-400" />
-                  )}
-                </button>
-                {personaOpen && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border border-black/10 rounded-xl shadow-lg overflow-hidden">
-                    {PERSONAS.map(p => (
-                      <button
-                        key={p.value}
-                        onClick={() => handlePersonaChange(p.value)}
-                        disabled={personaLoading}
-                        className={`w-full flex flex-col items-start px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors disabled:opacity-50 ${
-                          persona === p.value ? 'bg-violet-50' : ''
-                        }`}
-                      >
-                        <span className="font-medium text-zinc-800">{p.label}</span>
-                        <span className="text-xs text-zinc-500">{p.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {personaMsg && (
-                <div
-                  className={`mt-3 flex items-start gap-2 text-sm rounded-lg p-3 border ${
-                    personaMsg.type === 'ok'
-                      ? 'bg-green-50 border-green-200 text-green-800'
-                      : 'bg-red-50 border-red-200 text-red-800'
-                  }`}
-                >
-                  {personaMsg.type === 'ok' ? (
-                    <CheckCircle2 size={14} className="flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                  )}
-                  <span>{personaMsg.text}</span>
-                </div>
               )}
             </div>
           )}

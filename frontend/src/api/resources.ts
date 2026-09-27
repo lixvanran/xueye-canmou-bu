@@ -8,8 +8,19 @@ export const listResources = (params?: {
   search?: string
   user_id?: number
   knowledge_tag?: string  // v2.0: 按知识点标签筛选
+  mastered?: boolean  // v0.1.7: 前端按 mastered 过滤 (后端不支持)
+  limit?: number
 }) =>
-  api.get<{ total: number; items: Resource[] }>('/resources/list', { params }).then(r => r.data)
+  api.get<{ total: number; items: Resource[] }>('/resources/list', { params }).then(r => {
+    if (params?.mastered === false) {
+      r.data.items = r.data.items.filter(i => !i.mastered)
+      r.data.total = r.data.items.length
+    }
+    if (params?.limit && r.data.items.length > params.limit) {
+      r.data.items = r.data.items.slice(0, params.limit)
+    }
+    return r.data
+  })
 
 export const createResource = (formData: FormData) =>
   api.post('/resources/create', formData, {
