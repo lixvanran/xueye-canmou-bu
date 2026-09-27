@@ -370,11 +370,25 @@ export default function ChatPage() {
             updateTrace()
             break
           case 'tools':
-            trace.tool_calls = trace.tool_calls.concat([ev.data])
+            // v0.1.7: 后端 ev.data 是 {raw: [{name, args}, ...]} 或单对象, 展开成多条
+            if (ev.data && Array.isArray((ev.data as any).raw)) {
+              trace.tool_calls = trace.tool_calls.concat((ev.data as any).raw)
+            } else if (ev.data && Array.isArray(ev.data)) {
+              trace.tool_calls = trace.tool_calls.concat(ev.data as any)
+            } else {
+              trace.tool_calls = trace.tool_calls.concat([ev.data])
+            }
             updateTrace()
             break
           case 'search_results':
-            trace.tool_results = trace.tool_results.concat([ev.data])
+            // 同上 — 后端可能是 {raw: [...]} 或单对象
+            if (ev.data && Array.isArray((ev.data as any).raw)) {
+              trace.tool_results = trace.tool_results.concat((ev.data as any).raw)
+            } else if (ev.data && Array.isArray(ev.data)) {
+              trace.tool_results = trace.tool_results.concat(ev.data as any)
+            } else {
+              trace.tool_results = trace.tool_results.concat([ev.data])
+            }
             updateTrace()
             break
           case 'thinking':
@@ -1086,7 +1100,7 @@ function AgentTracePanel({ trace, liveTrace }: { trace: any; liveTrace: any }) {
       label: 'RAG 检索',
       color: 'bg-purple-100 text-purple-700',
       data: t.rag,
-      sub: t.rag ? `命中: ${t.rag.kb_count || 0} KB / ${t.rag.user_count || 0} 错题` : undefined,
+      sub: t.rag ? `命中: ${(t.rag.kb_results || []).length} KB / ${(t.rag.user_resources || []).length} 错题` : undefined,
     },
     {
       key: 'rag_trace',
@@ -1110,7 +1124,7 @@ function AgentTracePanel({ trace, liveTrace }: { trace: any; liveTrace: any }) {
       label: '工具调用',
       color: 'bg-emerald-100 text-emerald-700',
       data: { calls: t.tool_calls || [], results: t.tool_results || [] },
-      sub: `${(t.tool_calls || []).length} 次调用 / ${(t.tool_results || []).length} 个结果`,
+      sub: `${(t.tool_calls || []).length} 次调用${(t.tool_calls || []).length > 0 ? ' / ' + ((t.tool_calls || []).map((c: any) => c.name).filter((v: any, i: number, a: string[]) => a.indexOf(v) === i).join(', ')) : ''}`,
     },
     {
       key: 'thinking',
