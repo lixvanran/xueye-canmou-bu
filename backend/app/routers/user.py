@@ -105,7 +105,14 @@ async def update_profile(
     if payload.persona is not None:
         # v0.1.7: 切换 Agent 人格 (实际生效到 system prompt)
         # 允许值: teacher_zhang / xuejie / duanzishou / custom
-        user.persona = payload.persona or "teacher_zhang"
+        new_persona = payload.persona or "teacher_zhang"
+        # [P0] 修复: persona 切换时联动 agent_name (避免自相矛盾)
+        # 只有当 agent_name 是空 / 默认值 / 任何 persona 默认值之一时, 才跟着变
+        # 用户明确设过 (如 '小张' '李老师'), 不覆盖
+        all_defaults = set(PERSONA_DEFAULT_AGENT_NAME.values())
+        if payload.agent_name is None and (not user.agent_name or user.agent_name in all_defaults):
+            user.agent_name = PERSONA_DEFAULT_AGENT_NAME.get(new_persona, "张老师")
+        user.persona = new_persona
     if payload.direction is not None:
         user.direction = payload.direction or ""
     if payload.language is not None:
@@ -273,6 +280,15 @@ AVAILABLE_PERSONAS = [
 ]
 
 
+# v0.1.7 修复下属测试报告 [P0]: persona 切换时 agent_name 自动联动, 避免自相矛盾
+# (之前 user.agent_name='学姐' + user.persona='duanzishou' 同时存在 → LLM 双重人格)
+PERSONA_DEFAULT_AGENT_NAME = {
+    "teacher_zhang": "张老师",
+    "xuejie":        "学姐",
+    "duanzishou":    "段子手",
+}
+
+
 @router.get("/personas")
 async def list_personas():
     """列出可选的 Agent 人格 (含适用 scenario)"""
@@ -307,9 +323,21 @@ async def set_persona(
         db.add(user)
         db.flush()
     user.persona = persona
+    # v0.1.7 修复 [P0] agent_name 与 persona 一致性:
+    # 如果当前 agent_name 是空/默认值/任一 persona 默认值之一, 跟着 persona 切换
+    # 否则保留用户自定义 (用户可能设了 '小张' '李老师' 等特殊名)
+    current_default = PERSONA_DEFAULT_AGENT_NAME.get(getattr(user, "persona", None) or "teacher_zhang")
+    all_defaults = set(PERSONA_DEFAULT_AGENT_NAME.values())
+    if not user.agent_name or user.agent_name in all_defaults:
+        user.agent_name = PERSONA_DEFAULT_AGENT_NAME.get(persona, "张老师")
     db.commit()
     db.refresh(user)
-    return {"message": "Persona updated", "persona": persona, "persona_label": next((p["label"] for p in AVAILABLE_PERSONAS if p["value"] == persona), persona)}
+    return {
+        "message": "Persona updated",
+        "persona": persona,
+        "persona_label": next((p["label"] for p in AVAILABLE_PERSONAS if p["value"] == persona), persona),
+        "agent_name": user.agent_name,  # 返回当前 agent_name, 前端可显示
+    }
 
 
 # ========== Education stages ==========

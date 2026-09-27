@@ -282,6 +282,20 @@ export default function ChatPage() {
     setInput('')
     setActiveTab(next)
     setPersonaMsg(null)
+    // v0.1.7 修复 [P1] 下属报告: 切 tab 时清 trace, 否则切回原 tab 看到陈旧 trace 卡片
+    setCurrentTrace({
+      started: false,
+      steps: [],
+      llm_done: false,
+      tool_calls_count: 0,
+      total_latency_ms: 0,
+      model_used: '',
+    })
+    // 同时 abort in-flight stream (如有)
+    if (abortCtrl) {
+      try { abortCtrl.abort() } catch {}
+      setAbortCtrl(null)
+    }
   }
 
   // v0.1.6: 发送消息 — 调 /api/chat 流式响应, 渲染到消息列表

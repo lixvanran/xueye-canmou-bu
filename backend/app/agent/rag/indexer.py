@@ -43,6 +43,11 @@ class EmbeddingService:
             self.mode = "fallback"
             self.dim = TFIDF_DIM
             logger.info(f"Embedding: fallback TF-IDF (dim={self.dim}, 语义召回有限但零依赖)")
+        # v0.1.7 [P0] 修复: circuit breaker — 第一次 403 后缓存 _disabled_until,
+        # 接下来 5 分钟直接走 TF-IDF, 不再浪费 API call + 刷 ERROR 日志
+        import time as _t
+        self._disabled_until: float = 0.0
+        self._disable_reason: str = ""
 
     def embed(self, text: str) -> List[float]:
         if self.mode == "openai":
@@ -52,9 +57,24 @@ class EmbeddingService:
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
         return [self.embed(t) for t in texts]
 
+    def _is_disabled(self) -> bool:
+        import time
+        return self._disabled_until > time.time()
+
+    def _disable_for(self, seconds: float, reason: str):
+        import time
+        self._disabled_until = time.time() + seconds
+        self._disable_reason = reason
+        logger.warning(
+            f"[circuit-breaker] Embedding disabled for {seconds:.0f}s: {reason[:80]}. "
+            f"Will silently use TF-IDF fallback."
+        )
+
     # ===== OpenRouter (OpenAI-compatible embeddings) =====
     def _openai_embed(self, text: str) -> List[float]:
         """同步版, 在 async 上下文里走 to_thread"""
+        if self._is_disabled():
+            return self._tfidf_vector(text)
         try:
             from openai import OpenAI
             client = OpenAI(
@@ -67,7 +87,11 @@ class EmbeddingService:
             )
             return resp.data[0].embedding
         except Exception as e:
-            logger.error(f"OpenRouter embedding failed: {e}, falling back to TF-IDF")
+            err_str = str(e)
+            if "403" in err_str or "violation" in err_str or "Forbidden" in err_str:
+                self._disable_for(300, f"403 Forbidden (sync): {err_str[:80]}")
+            else:
+                logger.error(f"OpenRouter embedding failed: {e}, falling back to TF-IDF")
             return self._tfidf_vector(text)
 
     async def aembed(self, text: str) -> List[float]:
@@ -85,7 +109,11 @@ class EmbeddingService:
                 )
                 return resp.data[0].embedding
             except Exception as e:
-                logger.error(f"OpenRouter embedding failed: {e}, falling back to TF-IDF")
+                err_str = str(e)
+                if "403" in err_str or "violation" in err_str or "Forbidden" in err_str:
+                    self._disable_for(300, f"403 Forbidden: {err_str}")
+                else:
+                    logger.error(f"OpenRouter embedding failed: {e}, falling back to TF-IDF")
         return self._tfidf_vector(text)
 
     # ===== Fallback: TF-IDF =====

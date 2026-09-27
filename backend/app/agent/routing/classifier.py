@@ -143,12 +143,28 @@ class MiniMaxM3Classifier:
 
     @staticmethod
     def _extract_json(text: str) -> Optional[dict]:
+        """v0.1.7 修复 [P1]: robust 解析, 处理 markdown fence + 前缀说明
+        尝试顺序:
+        1. 原样 json.loads (合法 JSON)
+        2. 去掉 ```json ... ``` markdown fence
+        3. 取第一个 { ... } 块
+        4. 去掉非 JSON 前缀 ('json'/'JSON'/'答案:'/'下面是...')
+        """
         if not text:
             return None
+        # 1. 原样
         try:
             return json.loads(text)
         except Exception:
             pass
+        # 2. 去掉 markdown fence (LLM 偶尔把 JSON 包在 ```json ... ```)
+        fence_stripped = re.sub(r"^\s*```(?:json|JSON)?\s*|\s*```\s*$", "", text, flags=re.MULTILINE)
+        if fence_stripped != text:
+            try:
+                return json.loads(fence_stripped.strip())
+            except Exception:
+                pass
+        # 3. 取第一个 { ... } 块
         m = re.search(r"\{[\s\S]*\}", text)
         if m:
             try:

@@ -109,28 +109,17 @@ class LLMClient(BaseLLMClient):
         }
 
     async def embedding(self, text: str) -> list[float]:
-        """调 OpenAI-compatible embedding 接口
-        v0.9.8: 共用 LLM_API_KEY (OpenRouter 支持 openai/text-embedding-3-small)
-        - 走 LLM_BASE_URL (即 OpenRouter) + LLM_API_KEY
-        - 失败时返回零向量 (RAG 会自然降级)
+        """v0.1.7 [P0] 修复: 走 indexer 统一入口, circuit breaker 自动覆盖.
+        之前这里直接调 OpenRouter embedding, 绕过了 indexer 的 403 cache,
+        导致每个 chat 都刷一条 ERROR. 现在改用 indexer.aembed(), 共享 circuit breaker.
         """
-        if not settings.LLM_API_KEY:
-            logger.warning("LLM_API_KEY not set; embedding returns zero vector")
-            return [0.0] * 1024
-        try:
-            from openai import AsyncOpenAI
-            client = AsyncOpenAI(
-                api_key=settings.LLM_API_KEY,
-                base_url=settings.LLM_BASE_URL,
-            )
-            response = await client.embeddings.create(
-                model="openai/text-embedding-3-small",
-                input=text,
-            )
-            return response.data[0].embedding
-        except Exception as e:
-            logger.error(f"Embedding failed: {e}")
-            return [0.0] * 1024
+        from app.agent.rag.indexer import get_embedder
+        embedder = get_embedder()
+        # indexer 内部已经处理: disabled → TF-IDF, 403 → disable + TF-IDF, 其他 → 报错 + TF-IDF
+        if hasattr(embedder, "aembed"):
+            return await embedder.aembed(text)
+        # 兜底: 老版本没 aembed 时降级到零向量
+        return [0.0] * 1024
 
 
 # 模块级单例

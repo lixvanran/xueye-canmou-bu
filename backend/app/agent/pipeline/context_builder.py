@@ -92,24 +92,9 @@ def _build_profile_injection(user_profile: dict) -> str:
             f"你叫 {agent_name}, 不要自称'张老师'或'老张'等默认称呼"
         )
 
-    # v0.1.7: persona 注入 (实际生效人格到 system prompt)
-    persona = (user_profile.get("persona") or "teacher_zhang").strip()
-    if persona == "xuejie":
-        blocks.append(
-            "## 人格: 学姐风格\n"
-            "- 语气温和亲切, 像过来人分享经验\n"
-            "- 多用'我当年''我当时'等第一人称代入\n"
-            "- 给建议时常加'你试试''我建议你'等温和措辞\n"
-            "- 不端架子, 鼓励学生提问"
-        )
-    elif persona == "duanzishou":
-        blocks.append(
-            "## 人格: 段子手风格\n"
-            "- 幽默轻松, 偶尔抛梗, 但不油腻\n"
-            "- 知识点讲完会加个梗或冷笑话辅助记忆\n"
-            "- 但严肃问题 (志愿/考试) 别抖机灵, 该正经正经"
-        )
-    # teacher_zhang 不需要注入 (scenario prompt 已自带)
+    # v0.1.7: persona 已在 _render_base(persona) 里生效 (BASE_PERSONA → PERSONA_TEMPLATES 切换)
+    # 之前这里追加 persona 块的方法无效, 因为 BASE_PERSONA 的 "你是张老师" 在前面覆盖了
+    # 现在 base 本身已经按 persona 切换, 这里不再追加
 
     if not blocks:
         return ""
@@ -169,9 +154,12 @@ async def build_messages(
     dt_on = _resolve_toggle(deep_thinking_enabled, "DEEP_THINKING_ENABLED")
 
     # 4) System prompt
+    # v0.1.7: persona 字段从 user_profile 取, 默认 teacher_zhang
+    persona = (user_profile or {}).get("persona") or "teacher_zhang"
     system_prompt = build_system_prompt(
         scenario, user_profile, rag_context,
         web_search_enabled=ws_on, deep_thinking_enabled=dt_on,
+        persona=persona,
     )
 
     # v2.0: profile 衍生指令注入 (末尾追加)

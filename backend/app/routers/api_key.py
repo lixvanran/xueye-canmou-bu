@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel, Field
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,11 @@ class ApiKeyStatus(BaseModel):
 
 
 class ApiKeySetRequest(BaseModel):
-    api_key: str = Field(..., min_length=10, max_length=500)
+    """v0.1.7 修复 [P1]: api_key 改为可选.
+    - 空/不传: 测当前 env LLM_API_KEY (用于 '测当前 key')
+    - 传了: 测传入的 key (用于 '测新 key')
+    """
+    api_key: Optional[str] = Field(None, min_length=10, max_length=500)
 
 
 class ApiKeySetResponse(BaseModel):
@@ -195,12 +199,23 @@ async def set_api_key(req: ApiKeySetRequest):
 
 
 @router.post("/test", response_model=ApiKeyTestResponse)
-async def test_api_key(req: ApiKeySetRequest):
-    """测试 key 是否有效 (调 OpenRouter /auth/key)"""
-    key = req.api_key.strip()
-    err = _validate_key_format(key)
-    if err:
-        raise HTTPException(400, err)
+async def test_api_key(req: ApiKeySetRequest = Body(default_factory=ApiKeySetRequest)):
+    """v0.1.7 修复 [P1]: 测试 key 是否有效 (调 OpenRouter /auth/key)
+    - 传 api_key: 测传入的 key
+    - 不传: 测当前 env LLM_API_KEY (用于设置页'测当前 key'按钮)
+    """
+    # v0.1.7 修复 [P1]: 没传 api_key 时测当前 env 的 key
+    if not req.api_key:
+        key = (settings.LLM_API_KEY or "").strip()
+        if not key:
+            raise HTTPException(400, "当前 env 未配置 LLM_API_KEY")
+        source = "current_env"
+    else:
+        key = req.api_key.strip()
+        err = _validate_key_format(key)
+        if err:
+            raise HTTPException(400, err)
+        source = "input"
 
     try:
         async with httpx.AsyncClient(timeout=15) as client:

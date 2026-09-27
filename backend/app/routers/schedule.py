@@ -14,6 +14,9 @@ from app.agent.tools.schedule import (
     create_schedule, delete_schedule, list_schedule,
     update_schedule, suggest_schedule,
 )
+from app.db.database import get_db, ScheduleORM
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/schedule", tags=["日程"])
 
@@ -50,8 +53,12 @@ class SuggestRequest(BaseModel):
 
 
 class ToggleRequest(BaseModel):
+    """v0.1.7 修复 [P1]: completed 改为可选.
+    - 仅传 id: 自动 flip (真 toggle)
+    - 传 id + completed: 显式 set (向后兼容前端)
+    """
     id: int
-    completed: bool
+    completed: Optional[bool] = None
     user_id: int = 1
 
 
@@ -110,7 +117,20 @@ async def delete_schedule_api(req: DeleteScheduleRequest):
 
 
 @router.post("/toggle")
-async def toggle_schedule_api(req: ToggleRequest):
+async def toggle_schedule_api(req: ToggleRequest, db: Session = Depends(get_db)):
+    """v0.1.7 修复 [P1]: toggle 端点真的 toggle.
+    - req.completed 为 None: 读当前 schedule 的 completed 状态, flip
+    - req.completed 显式传值: 用其值 (向后兼容前端调用)
+    """
+    if req.completed is None:
+        # 读当前 schedule, flip completed
+        sched = db.query(ScheduleORM).filter_by(id=req.id, user_id=req.user_id).first()
+        if not sched:
+            return {"success": False, "error": f"Schedule id={req.id} not found"}
+        sched.completed = not bool(sched.completed)
+        db.commit()
+        db.refresh(sched)
+        return {"success": True, "id": sched.id, "completed": sched.completed, "toggled": True}
     return await update_schedule(id=req.id, completed=req.completed, user_id=req.user_id)
 
 
