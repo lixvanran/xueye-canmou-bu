@@ -254,6 +254,23 @@ def _migrate_if_needed():
     if 'resources' not in inspector.get_table_names():
         return  # 全新安装, 让 create_all 处理
     existing_cols = {c['name'] for c in inspector.get_columns('resources')}
+
+    # v0.1.7: users 表 ALTER (persona 列升级老库)
+    user_cols = {c['name'] for c in inspector.get_columns('users')}
+    user_new_cols = {
+        'persona': ('VARCHAR(32)', "'teacher_zhang'"),
+    }
+    for col, (ctype, default) in user_new_cols.items():
+        if col not in user_cols:
+            logger.info(f"Schema migration: adding users.{col}")
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text(
+                        f"ALTER TABLE users ADD COLUMN {col} {ctype} DEFAULT {default}"
+                    ))
+                    conn.commit()
+            except Exception as e:
+                logger.warning(f"Failed to add column users.{col}: {e}")
     # 字段 → 默认值 / 类型
     new_cols = {
         'code':            ('VARCHAR(16)',  "''"),
@@ -291,6 +308,7 @@ def _migrate_if_needed():
 
 def _migrate_profile_fields(engine):
     """v2.0: 给 users 表补 stage/direction/language/agent_name 字段.
+    v0.1.7: 加 persona.
     老字段 birthday/home_address/emergency_contact 按 spec 注释保留, schema 不删.
     """
     from sqlalchemy import inspect, text
@@ -303,6 +321,8 @@ def _migrate_profile_fields(engine):
         'direction':   ('VARCHAR(32)', "''"),
         'language':    ('VARCHAR(16)', "'中文'"),
         'agent_name':  ('VARCHAR(64)', "'张老师'"),
+        # v0.1.7: 人格 (实际生效到 system prompt)
+        'persona':     ('VARCHAR(32)', "'teacher_zhang'"),
         # 老字段保留 (向后兼容), 不主动建. 注释里说明
         # 'birthday':          ('VARCHAR(32)', "NULL"),
         # 'home_address':      ('VARCHAR(256)', "NULL"),
