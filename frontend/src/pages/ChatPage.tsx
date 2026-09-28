@@ -88,24 +88,24 @@ const TABS: TabConfig[] = [
 
 // v0.1.7+: 16 persona — 与后端 AVAILABLE_PERSONAS 同步
 // 来源: nuwa-skill 蒸馏 13 人物 + 1 主题 (github.com/alchaincyf, MIT) + 自蒸馏 xuejie / duanzishou
-type PersonaEntry = { value: string; label: string; emoji: string; desc: string }
+type PersonaEntry = { value: string; label: string; desc: string }
 const PERSONAS: PersonaEntry[] = [
-  { value: 'teacher_zhang', label: '张老师', emoji: '🎓', desc: 'nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 启发' },
-  { value: 'xuejie',        label: '学姐',   emoji: '🌸', desc: '串行复利 · 适合答疑陪伴' },
-  { value: 'duanzishou',    label: '段子手', emoji: '😂', desc: '第一性原理 + 段子 · 适合闲聊' },
-  { value: 'jobs',          label: '乔布斯', emoji: '🍎', desc: '专注=说不 · 产品/设计/战略' },
-  { value: 'musk',          label: '马斯克', emoji: '🚀', desc: '第一性原理 · 工程/成本/删减' },
-  { value: 'munger',        label: '芒格',   emoji: '📊', desc: '反转思维 · 投资/多学科' },
-  { value: 'feynman',       label: '费曼',   emoji: '🔬', desc: '命名≠理解 · 学习/科学' },
-  { value: 'naval',         label: '纳瓦尔', emoji: '🧘', desc: '杠杆思维 · 财富/人生哲学' },
-  { value: 'zhang_yiming',  label: '张一鸣', emoji: '💡', desc: '延迟满足 · 产品/组织/全球化' },
-  { value: 'paul_graham',   label: 'Paul Graham', emoji: '✍️', desc: '写作=思考 · 创业/YC' },
-  { value: 'karpathy',      label: 'Karpathy',   emoji: '🤖', desc: 'Software X.0 · AI/工程' },
-  { value: 'ilya',          label: 'Ilya 苏茨克维', emoji: '🧠', desc: '压缩=理解 · AI 安全/研究' },
-  { value: 'mrbeast',       label: 'MrBeast',     emoji: '🎬', desc: 'CTR×AVD · 内容/YouTube' },
-  { value: 'trump',         label: '特朗普',     emoji: '🏛️', desc: '一切都是交易 · 谈判/权力' },
-  { value: 'taleb',         label: '塔勒布',     emoji: '📚', desc: '反脆弱 · 风险/黑天鹅' },
-  { value: 'x_mastery',     label: 'X Mastery', emoji: '𝕏', desc: '6 位创作者综合 · X/Twitter 运营' },
+  { value: 'teacher_zhang', label: '张老师',  desc: 'nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 启发' },
+  { value: 'xuejie',        label: '学姐',    desc: '串行复利 · 适合答疑陪伴' },
+  { value: 'duanzishou',    label: '段子手',  desc: '第一性原理 + 段子 · 适合闲聊' },
+  { value: 'jobs',          label: '乔布斯',  desc: '专注=说不 · 产品/设计/战略' },
+  { value: 'musk',          label: '马斯克',  desc: '第一性原理 · 工程/成本/删减' },
+  { value: 'munger',        label: '芒格',    desc: '反转思维 · 投资/多学科' },
+  { value: 'feynman',       label: '费曼',    desc: '命名≠理解 · 学习/科学' },
+  { value: 'naval',         label: '纳瓦尔',  desc: '杠杆思维 · 财富/人生哲学' },
+  { value: 'zhang_yiming',  label: '张一鸣',  desc: '延迟满足 · 产品/组织/全球化' },
+  { value: 'paul_graham',   label: 'Paul Graham', desc: '写作=思考 · 创业/YC' },
+  { value: 'karpathy',      label: 'Karpathy', desc: 'Software X.0 · AI/工程' },
+  { value: 'ilya',          label: 'Ilya 苏茨克维', desc: '压缩=理解 · AI 安全/研究' },
+  { value: 'mrbeast',       label: 'MrBeast', desc: 'CTR×AVD · 内容/YouTube' },
+  { value: 'trump',         label: '特朗普',  desc: '一切都是交易 · 谈判/权力' },
+  { value: 'taleb',         label: '塔勒布',  desc: '反脆弱 · 风险/黑天鹅' },
+  { value: 'x_mastery',     label: 'X Mastery', desc: '6 位创作者综合 · X/Twitter 运营' },
 ]
 
 // v2.0: scenario label 映射 (search 结果用)
@@ -780,7 +780,7 @@ export default function ChatPage() {
                 title="切换 Agent 人格"
               >
                 <UserCircle2 size={13} />
-                {PERSONAS.find(p => p.value === persona)?.emoji} {PERSONAS.find(p => p.value === persona)?.label || persona}
+                {PERSONAS.find(p => p.value === persona)?.label || persona}
                 {personaLoading ? (
                   <Loader2 size={11} className="animate-spin" />
                 ) : (
@@ -803,7 +803,6 @@ export default function ChatPage() {
                       }`}
                     >
                       <span className="font-medium text-zinc-800 flex items-center gap-2">
-                        <span>{p.emoji}</span>
                         <span>{p.label}</span>
                         {persona === p.value && <CheckCircle2 size={12} className="text-violet-500" />}
                       </span>
@@ -842,14 +841,14 @@ export default function ChatPage() {
               )}
             </div>
             <div className="text-xs text-zinc-400 hidden sm:block">
-              v2.0 · 切换 tab 不带上下文
+              v0.1.7+ · 切换 tab 不带上下文
             </div>
           </div>
         </div>
 
         {/* v2.0: 搜索结果下拉 */}
         {searchOpen && (
-          <div className="absolute right-6 mt-1 bg-white border border-black/10 rounded-2xl shadow-xl z-30 w-[28rem] max-w-[calc(100vw-3rem)] overflow-hidden">
+          <div className="absolute right-6 mt-1 bg-white border border-black/10 rounded-2xl shadow-xl z-20 w-[28rem] max-w-[calc(100vw-3rem)] max-h-[28rem] overflow-y-auto overflow-hidden">
             {/* scenario chip 过滤 */}
             <div className="flex items-center gap-1.5 px-3 py-2 border-b border-black/5 bg-zinc-50/60 flex-wrap">
               <span className="text-xs text-zinc-500">场景:</span>
@@ -1177,7 +1176,6 @@ export default function ChatPage() {
                               : 'bg-white border-amber-300 text-amber-800 hover:bg-amber-100'
                           }`}
                         >
-                          <span>{p.emoji}</span>
                           <span>{p.label}</span>
                           {sel && <CheckCircle2 size={11} />}
                         </button>
@@ -1241,7 +1239,6 @@ export default function ChatPage() {
                         return (
                           <div key={subId} className="bg-white border border-zinc-200 rounded-lg p-3">
                             <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-base">{pEntry?.emoji || '🤖'}</span>
                               <span className="text-xs font-semibold text-zinc-800">{pEntry?.label || s.persona}</span>
                               {s.latency_ms != null && (
                                 <span className="text-[10px] text-zinc-500 ml-auto flex items-center gap-1">
@@ -1422,7 +1419,7 @@ export default function ChatPage() {
 // ===== v0.1.7: Agent 完整运行过程可视化面板 (参赛核心展示) =====
 function AgentTracePanel({ trace, liveTrace }: { trace: any; liveTrace: any }) {
   const t = liveTrace || trace || {}
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)  // v0.1.7+: 默认展开, 让用户直接看到 trace
   const [expandedStep, setExpandedStep] = useState<string | null>(null)
 
   const total = t?.end?.total_latency_ms
@@ -1544,9 +1541,44 @@ function AgentTracePanel({ trace, liveTrace }: { trace: any; liveTrace: any }) {
                     {s.sub && <span className="text-zinc-500 text-[10px] truncate">{s.sub}</span>}
                   </button>
                   {isOpen && hasData && (
-                    <pre className="mt-1 p-2 bg-zinc-50 rounded text-[10px] overflow-auto max-h-48 text-zinc-700 border border-zinc-100">
-                      {JSON.stringify(s.data, null, 2)}
-                    </pre>
+                    s.key === 'tools' ? (
+                      // v0.1.7+: 工具调用卡片 — 不再 JSON.stringify, 改成友好卡片
+                      <div className="mt-1 space-y-1">
+                        {((s.data as any).calls || []).length === 0 ? (
+                          <div className="text-[10px] text-zinc-400 italic p-2">无工具调用</div>
+                        ) : (
+                          (s.data as any).calls.map((call: any, i: number) => {
+                            const result = ((s.data as any).results || [])[i]
+                            return (
+                              <div key={i} className="bg-white border border-emerald-200 rounded p-1.5 text-[10px]">
+                                <div className="flex items-center gap-1.5 font-medium text-emerald-800">
+                                  <Wrench size={9} />
+                                  <span>{call.name || '未知工具'}</span>
+                                </div>
+                                {call.args && Object.keys(call.args).length > 0 && (
+                                  <div className="text-zinc-500 mt-0.5 truncate">
+                                    参数: {JSON.stringify(call.args)}
+                                  </div>
+                                )}
+                                {result && (
+                                  <div className="text-zinc-600 mt-1 pt-1 border-t border-emerald-100 max-h-20 overflow-y-auto">
+                                    <span className="text-emerald-700 font-medium">结果: </span>
+                                    <span className="whitespace-pre-wrap">{typeof result === 'string' ? result : JSON.stringify(result).slice(0, 300)}</span>
+                                  </div>
+                                )}
+                                {!result && (
+                                  <div className="text-zinc-400 italic mt-0.5">结果: 等待返回...</div>
+                                )}
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
+                    ) : (
+                      <pre className="mt-1 p-2 bg-zinc-50 rounded text-[10px] overflow-auto max-h-48 text-zinc-700 border border-zinc-100">
+                        {JSON.stringify(s.data, null, 2)}
+                      </pre>
+                    )
                   )}
                 </div>
               )
