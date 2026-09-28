@@ -56,9 +56,11 @@
 
 ### 环境要求
 
-- Python 3.11+
-- Node.js 20+
+- **Python 3.11+** （启动.bat 没装时会自动用 winget 装 — 仅限 Win10 1809+ / Win11）
+- **Node.js 20+** （同上）
 - Windows 10/11 或 macOS / Linux
+
+> v0.1.7+：Windows 用户如果机器上 Python / Node 都没装，启动.bat 会**自动用 winget 装**（用户级安装，不用管理员权限）。装完需要重新跑一次 启动.bat（Windows 已知 PATH 刷新问题）。macOS / Linux 用户请用 brew / apt 手动装。
 
 ### 启动方式
 
