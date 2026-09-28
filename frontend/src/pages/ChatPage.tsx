@@ -13,6 +13,11 @@
  *  - 答疑 tab 加 "帮我安排学习计划" quick action (触发 chat message 走 schedule 工具)
  */
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeHighlight from 'rehype-highlight'
+import rehypeKatex from 'rehype-katex'
 import {
   MessageSquare, GraduationCap, MessageCircle, ChevronDown, Loader2, AlertCircle, CheckCircle2,
   UserCircle2, BookOpen, Target, X, Sparkles, Search, Calendar, Clock, ArrowRight,
@@ -66,12 +71,26 @@ const TABS: TabConfig[] = [
   },
 ]
 
-// v0.1.7: PERSONAS 与后端 PERSONA_TEMPLATES + AVAILABLE_PERSONAS 同步
-// 来源: nuwa-skill 蒸馏的人物思维框架 (github.com/alchaincyf/zhangxuefeng-skill / naval-ravikant / elon-musk)
-const PERSONAS: Array<{ value: string; label: string; desc: string }> = [
-  { value: 'teacher_zhang', label: '张老师', desc: 'nuwa-skill 蒸馏 · 5 心智模型 + 8 决策启发 · 适合志愿/考研/职业' },
-  { value: 'xuejie',        label: '学姐',   desc: 'nuwa-skill Naval 框架 · 串行复利 · 适合答疑陪伴' },
-  { value: 'duanzishou',    label: '段子手', desc: 'nuwa-skill Musk 框架 · 第一性原理 · 适合闲聊脑暴' },
+// v0.1.7+: 16 persona — 与后端 AVAILABLE_PERSONAS 同步
+// 来源: nuwa-skill 蒸馏 13 人物 + 1 主题 (github.com/alchaincyf, MIT) + 自蒸馏 xuejie / duanzishou
+type PersonaEntry = { value: string; label: string; emoji: string; desc: string }
+const PERSONAS: PersonaEntry[] = [
+  { value: 'teacher_zhang', label: '张老师', emoji: '🎓', desc: 'nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 启发' },
+  { value: 'xuejie',        label: '学姐',   emoji: '🌸', desc: '串行复利 · 适合答疑陪伴' },
+  { value: 'duanzishou',    label: '段子手', emoji: '😂', desc: '第一性原理 + 段子 · 适合闲聊' },
+  { value: 'jobs',          label: '乔布斯', emoji: '🍎', desc: '专注=说不 · 产品/设计/战略' },
+  { value: 'musk',          label: '马斯克', emoji: '🚀', desc: '第一性原理 · 工程/成本/删减' },
+  { value: 'munger',        label: '芒格',   emoji: '📊', desc: '反转思维 · 投资/多学科' },
+  { value: 'feynman',       label: '费曼',   emoji: '🔬', desc: '命名≠理解 · 学习/科学' },
+  { value: 'naval',         label: '纳瓦尔', emoji: '🧘', desc: '杠杆思维 · 财富/人生哲学' },
+  { value: 'zhang_yiming',  label: '张一鸣', emoji: '💡', desc: '延迟满足 · 产品/组织/全球化' },
+  { value: 'paul_graham',   label: 'Paul Graham', emoji: '✍️', desc: '写作=思考 · 创业/YC' },
+  { value: 'karpathy',      label: 'Karpathy',   emoji: '🤖', desc: 'Software X.0 · AI/工程' },
+  { value: 'ilya',          label: 'Ilya 苏茨克维', emoji: '🧠', desc: '压缩=理解 · AI 安全/研究' },
+  { value: 'mrbeast',       label: 'MrBeast',     emoji: '🎬', desc: 'CTR×AVD · 内容/YouTube' },
+  { value: 'trump',         label: '特朗普',     emoji: '🏛️', desc: '一切都是交易 · 谈判/权力' },
+  { value: 'taleb',         label: '塔勒布',     emoji: '📚', desc: '反脆弱 · 风险/黑天鹅' },
+  { value: 'x_mastery',     label: 'X Mastery', emoji: '𝕏', desc: '6 位创作者综合 · X/Twitter 运营' },
 ]
 
 // v2.0: scenario label 映射 (search 结果用)
@@ -624,7 +643,7 @@ export default function ChatPage() {
                 title="切换 Agent 人格"
               >
                 <UserCircle2 size={13} />
-                {PERSONAS.find(p => p.value === persona)?.label || persona}
+                {PERSONAS.find(p => p.value === persona)?.emoji} {PERSONAS.find(p => p.value === persona)?.label || persona}
                 {personaLoading ? (
                   <Loader2 size={11} className="animate-spin" />
                 ) : (
@@ -647,7 +666,8 @@ export default function ChatPage() {
                       }`}
                     >
                       <span className="font-medium text-zinc-800 flex items-center gap-2">
-                        {p.label}
+                        <span>{p.emoji}</span>
+                        <span>{p.label}</span>
                         {persona === p.value && <CheckCircle2 size={12} className="text-violet-500" />}
                       </span>
                       <span className="text-xs text-zinc-500 mt-0.5">{p.desc}</span>
@@ -1006,13 +1026,70 @@ export default function ChatPage() {
                       className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap break-words ${
+                        className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm break-words ${
                           isUser
                             ? 'bg-zinc-900 text-white rounded-br-sm'
                             : 'bg-zinc-100 text-zinc-900 rounded-bl-sm'
                         }`}
                       >
-                        {m.content || (m.streaming ? '' : '(空)')}
+                        {m.content ? (
+                          isUser ? (
+                            <div className="whitespace-pre-wrap">{m.content}</div>
+                          ) : (
+                            // v0.1.7+: assistant 消息走 markdown 渲染 (用户提的关键 bug)
+                            <div className="markdown-body">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkMath]}
+                                rehypePlugins={[rehypeHighlight, rehypeKatex]}
+                                components={{
+                                  // 自定义: code block 不换行太长
+                                  pre: ({ children }) => (
+                                    <pre className="bg-zinc-900/5 border border-zinc-200 rounded-lg p-3 my-2 overflow-x-auto text-xs">
+                                      {children}
+                                    </pre>
+                                  ),
+                                  code: ({ className, children, ...props }: any) => {
+                                    const isInline = !className?.includes('language-')
+                                    return isInline ? (
+                                      <code className="bg-zinc-900/10 px-1 py-0.5 rounded text-xs" {...props}>
+                                        {children}
+                                      </code>
+                                    ) : (
+                                      <code className={className} {...props}>{children}</code>
+                                    )
+                                  },
+                                  // 标题加色
+                                  h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-2 first:mt-0">{children}</h1>,
+                                  h2: ({ children }) => <h2 className="text-sm font-bold mt-2 mb-1.5 first:mt-0">{children}</h2>,
+                                  h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1 first:mt-0">{children}</h3>,
+                                  // 列表
+                                  ul: ({ children }) => <ul className="list-disc pl-5 my-1.5 space-y-0.5">{children}</ul>,
+                                  ol: ({ children }) => <ol className="list-decimal pl-5 my-1.5 space-y-0.5">{children}</ol>,
+                                  // 引用
+                                  blockquote: ({ children }) => (
+                                    <blockquote className="border-l-2 border-zinc-300 pl-3 my-1.5 text-zinc-600 italic">
+                                      {children}
+                                    </blockquote>
+                                  ),
+                                  // 表格
+                                  table: ({ children }) => (
+                                    <div className="my-2 overflow-x-auto">
+                                      <table className="border-collapse border border-zinc-300 text-xs">
+                                        {children}
+                                      </table>
+                                    </div>
+                                  ),
+                                  th: ({ children }) => (
+                                    <th className="border border-zinc-300 px-2 py-1 bg-zinc-100 font-semibold">{children}</th>
+                                  ),
+                                  td: ({ children }) => <td className="border border-zinc-300 px-2 py-1">{children}</td>,
+                                }}
+                              >
+                                {m.content}
+                              </ReactMarkdown>
+                            </div>
+                          )
+                        ) : (m.streaming ? '' : '(空)')}
                         {m.streaming && (
                           <span className="inline-block w-1.5 h-4 bg-violet-400 ml-1 align-middle animate-pulse" />
                         )}

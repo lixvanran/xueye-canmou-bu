@@ -273,19 +273,48 @@ async def profile_view(user_id: int = 1, db: Session = Depends(get_db)):
 
 # ========== v0.1.7: Agent 人格 (实际生效到 system prompt) ==========
 
+# v0.1.7+ 扩充: nuwa-skill 蒸馏 13 人物 + 1 主题 + 自定义 2 个 = 16 个 persona
+# 来源: github.com/alchaincyf/nuwa-skill (MIT 协议) + 自蒸馏 xuejie / duanzishou
 AVAILABLE_PERSONAS = [
-    {"value": "teacher_zhang", "label": "张老师", "desc": "严厉直接, 一针见血 (默认, 适合志愿填报)", "scenario_fit": ["chat", "exam", "volunteer"]},
-    {"value": "xuejie", "label": "学姐", "desc": "温和亲切, 用过来人经验, 适合答疑和陪伴", "scenario_fit": ["chat", "exam"]},
-    {"value": "duanzishou", "label": "段子手", "desc": "幽默轻松, 适合随便聊聊", "scenario_fit": ["chitchat"]},
+    {"value": "teacher_zhang", "label": "张雪峰", "emoji": "🎓", "desc": "nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 决策启发", "source": "nuwa-skill", "scenario_fit": ["chat", "exam", "volunteer"]},
+    {"value": "xuejie",        "label": "学姐",   "emoji": "🌸", "desc": "自蒸馏 · 串行复利 · 适合答疑陪伴", "source": "self",      "scenario_fit": ["chat", "exam"]},
+    {"value": "duanzishou",    "label": "段子手", "emoji": "😂", "desc": "自蒸馏 · 第一性原理 + 段子 · 适合闲聊", "source": "self",      "scenario_fit": ["chitchat"]},
+    {"value": "jobs",          "label": "乔布斯", "emoji": "🍎", "desc": "nuwa-skill · 专注=说不 · 产品/设计/战略", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "musk",          "label": "马斯克", "emoji": "🚀", "desc": "nuwa-skill · 第一性原理 · 工程/成本/删减", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "munger",        "label": "芒格",   "emoji": "📊", "desc": "nuwa-skill · 反转思维 · 投资/多学科", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "feynman",       "label": "费曼",   "emoji": "🔬", "desc": "nuwa-skill · 命名≠理解 · 学习/科学", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "naval",         "label": "纳瓦尔", "emoji": "🧘", "desc": "nuwa-skill · 杠杆思维 · 财富/人生哲学", "source": "nuwa-skill", "scenario_fit": ["chat"]},
+    {"value": "zhang_yiming",  "label": "张一鸣", "emoji": "💡", "desc": "nuwa-skill · 延迟满足 · 产品/组织/全球化", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "paul_graham",   "label": "Paul Graham", "emoji": "✍️", "desc": "nuwa-skill · 写作=思考 · 创业/YC", "source": "nuwa-skill", "scenario_fit": ["chat"]},
+    {"value": "karpathy",      "label": "Karpathy",   "emoji": "🤖", "desc": "nuwa-skill · Software X.0 · AI/工程", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "ilya",          "label": "Ilya 苏茨克维","emoji": "🧠", "desc": "nuwa-skill · 压缩=理解 · AI 安全/研究", "source": "nuwa-skill", "scenario_fit": ["chat"]},
+    {"value": "mrbeast",       "label": "MrBeast",     "emoji": "🎬", "desc": "nuwa-skill · CTR × AVD · 内容/YouTube", "source": "nuwa-skill", "scenario_fit": ["chitchat"]},
+    {"value": "trump",         "label": "特朗普",     "emoji": "🏛️", "desc": "nuwa-skill · 一切都是交易 · 谈判/权力", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "taleb",         "label": "塔勒布",     "emoji": "📚", "desc": "nuwa-skill · 反脆弱 · 风险/黑天鹅", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "x_mastery",     "label": "X Mastery", "emoji": "𝕏", "desc": "nuwa-skill · 6 位创作者综合 · X/Twitter 运营", "source": "nuwa-skill", "scenario_fit": ["chitchat"]},
 ]
 
 
 # v0.1.7 修复下属测试报告 [P0]: persona 切换时 agent_name 自动联动, 避免自相矛盾
 # (之前 user.agent_name='学姐' + user.persona='duanzishou' 同时存在 → LLM 双重人格)
+# v0.1.7+: 全 16 persona 联动默认 agent_name (跟 label 一致, 全中文)
 PERSONA_DEFAULT_AGENT_NAME = {
     "teacher_zhang": "张老师",
     "xuejie":        "学姐",
     "duanzishou":    "段子手",
+    "jobs":          "乔布斯",
+    "musk":          "马斯克",
+    "munger":        "芒格",
+    "feynman":       "费曼",
+    "naval":         "纳瓦尔",
+    "zhang_yiming":  "张一鸣",
+    "paul_graham":   "Paul Graham",
+    "karpathy":      "Karpathy",
+    "ilya":          "Ilya",
+    "mrbeast":       "MrBeast",
+    "trump":         "特朗普",
+    "taleb":         "塔勒布",
+    "x_mastery":     "X Mastery",
 }
 
 
