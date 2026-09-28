@@ -788,6 +788,78 @@ function DataManagementSection() {
           </div>
         )}
       </div>
+
+      {/* v0.1.7+: 一键清空测试数据 (清会话 + 错题 + 计划 + 事实 + workspace/uploads/) */}
+      <ResetTestDataSection />
+    </div>
+  )
+}
+
+
+// v0.1.7+: 重置测试数据 — POST /api/workspace/reset-test-data
+function ResetTestDataSection() {
+  const [loading, setLoading] = useState(false)
+  const [msg, setMsg] = useState<{type: 'ok'|'err'; text: string; counts?: any} | null>(null)
+
+  const handleReset = async () => {
+    if (!confirm('确定清空所有 Agent 留下的测试数据?\n\n会清空:\n- 所有会话和消息\n- 所有错题和学习资料记录\n- 所有学习计划和事实\n- workspace/uploads/ 里的桌面拖入文件\n\n会保留:\n- 用户基本资料 (persona, agent_name 等)\n- 设置 (API Key 等)'))
+    if (!confirm('再次确认 — 这个操作不可撤销!')) return
+    setLoading(true)
+    setMsg(null)
+    try {
+      const resp = await fetch('/api/workspace/reset-test-data', { method: 'POST' })
+      const data = await resp.json()
+      if (data.success) {
+        setMsg({ type: 'ok', text: '已清空', counts: data.cleared })
+      } else {
+        setMsg({ type: 'err', text: data.error || '清空失败' })
+      }
+    } catch (e: any) {
+      setMsg({ type: 'err', text: `请求失败: ${e.message || e}` })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="border border-red-200 rounded-md p-3 bg-red-50/40">
+      <div className="flex items-center gap-2 mb-2">
+        <Trash2 size={13} className="text-red-600" />
+        <div className="text-xs font-medium text-red-700">一键清空测试数据</div>
+        <span className="text-xs text-red-400">(应急)</span>
+      </div>
+      <p className="text-xs text-gray-500 mb-2">
+        清空所有 Agent 跑测试留下的会话、错题、学习计划、事实、桌面拖入的文件。保留用户资料和设置。
+      </p>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={handleReset}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+          {loading ? '清空中...' : '一键清空测试数据'}
+        </button>
+      </div>
+      {msg && (
+        <div className={`mt-2 rounded-md p-2 text-xs border ${
+          msg.type === 'ok'
+            ? 'bg-green-50 border-green-200 text-green-800'
+            : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          <div className="flex items-start gap-1.5">
+            {msg.type === 'ok' ? <CheckCircle2 size={12} className="flex-shrink-0 mt-0.5" /> : <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />}
+            <div>
+              <div>{msg.text}</div>
+              {msg.counts && (
+                <div className="text-xs mt-1 font-mono opacity-70">
+                  {JSON.stringify(msg.counts)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

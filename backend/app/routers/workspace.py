@@ -4,9 +4,13 @@ v0.9.1: 新增 - 用户把错题图片/PDF/Word 等文件传到 uploads/,
 
 v2.0: 新增合并端点 POST /api/workspace/mistakes/{id}/explain
       一次性返回讲题 (4 步) + 标准答案, 流式
+
+v0.1.7+: 新增 GET /api/workspace/image/{filename} — 错题图片渲染修复
+       (前端 <img src="/api/workspace/image/xxx.png"> 直接走 API, 跳过 vite proxy
+        — 兼容 vite preview (无 proxy) + 跨 origin + 老 uploads/ 路径)
 """
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pathlib import Path
 import uuid
 import aiofiles
@@ -105,6 +109,121 @@ async def list_uploads():
     except Exception as e:
         logger.error(f"List uploads error: {e}")
         return {"success": False, "error": str(e)}
+
+
+# v0.1.7+: 错题图片渲染代理
+# 前端 <img src="/api/workspace/image/xxx.png"> 直接走这个 endpoint
+# 优先 UPLOAD_DIR (backend/data/uploads/), 兜底 WORKSPACE_UPLOADS_DIR (workspace/uploads/)
+# 跳过 vite proxy, 兼容 vite preview / 跨 origin / 老 /uploads/ 路径
+@router.get("/image/{filename}")
+async def serve_image(filename: str):
+    """错题图片渲染代理 — 兼容多个 uploads 目录
+
+    Args:
+        filename: 纯文件名 (不带路径), 例如 'abc-123.png'
+
+    Returns:
+        FileResponse (设置正确的 mime + cache)
+    """
+    # 防止 path traversal
+    safe_name = Path(filename).name
+    if safe_name != filename or ".." in filename:
+        raise HTTPException(400, "非法的文件名")
+
+    # 1) 优先 UPLOAD_DIR (backend/data/uploads/) — resources.py 写入目录
+    p1 = settings.UPLOAD_DIR / safe_name
+    if p1.exists():
+        return _file_response(p1)
+
+    # 2) 兜底 WORKSPACE_UPLOADS_DIR (workspace/uploads/) — 老用户 / workspace.py 写入目录
+    p2 = settings.WORKSPACE_UPLOADS_DIR / safe_name
+    if p2.exists():
+        return _file_response(p2)
+
+    raise HTTPException(404, f"图片不存在: {filename}")
+
+
+# v0.1.7+: 测试数据清理 (用户 P0 反馈)
+# 清空 conversations + messages + resources + schedules + facts + workspace/uploads/ 里的测试图片
+# 保留 settings / user profile (用户的 persona / agent_name 等)
+@router.post("/reset-test-data")
+async def reset_test_data(db: Session = Depends(get_db)):
+    """清空 Agent 测试留下的数据 — 用户的 P0 反馈:
+    '你把好多你测试时候留下的会话/错题等记录一起留下了!'
+
+    清空:
+    - conversations + messages (会话 + 消息)
+    - resources (错题 + 学习资料)
+    - schedules + schedule_items (学习计划)
+    - user_facts (长期事实)
+    - chat_memory (Agent 短期记忆)
+    - workspace/uploads/ 里的非 .gitkeep 文件
+
+    保留:
+    - users (用户基本资料, persona, agent_name)
+    - settings (设置)
+    - backend/data/uploads/ (resources 写入的真实图片, 但 db 记录会删, 所以图片孤立可保留)
+
+    Returns:
+        {cleared: {conversations: N, messages: N, resources: N, ...}}
+    """
+    try:
+        from sqlalchemy import text
+
+        # 取实际存在的表 (避免不存在的表报错)
+        existing_tables = {row[0] for row in db.execute(text(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ))}
+        # 安全清表名单 (按外键依赖反序)
+        candidates = ["messages", "conversations", "schedule_items",
+                      "schedules", "chat_memory", "user_facts", "resources"]
+        counts = {}
+        for t in candidates:
+            if t in existing_tables:
+                counts[t] = db.execute(text(f"DELETE FROM {t}")).rowcount
+        db.commit()
+
+        # 清 workspace/uploads/ 里的非隐藏文件 (用户的桌面拖入文件)
+        uploads_cleared = 0
+        uploads_dir = settings.WORKSPACE_UPLOADS_DIR
+        if uploads_dir.exists():
+            for p in uploads_dir.iterdir():
+                if p.name.startswith("."):
+                    continue
+                try:
+                    p.unlink()
+                    uploads_cleared += 1
+                except Exception as e:
+                    logger.warning(f"清理 {p} 失败: {e}")
+
+        logger.info(f"[reset-test-data] cleared: {counts}, uploads: {uploads_cleared}")
+        return {"success": True, "cleared": counts, "uploads_cleared": uploads_cleared}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"reset-test-data failed: {e}")
+        raise HTTPException(500, f"清理失败: {e}")
+
+
+# MIME type 映射 (FileResponse 自动推断, 这里加强)
+_MIME_MAP = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".bmp": "image/bmp",
+}
+
+
+def _file_response(p: Path) -> FileResponse:
+    """构造 FileResponse + cache + mime"""
+    ext = p.suffix.lower()
+    media_type = _MIME_MAP.get(ext, "application/octet-stream")
+    return FileResponse(
+        path=str(p),
+        media_type=media_type,
+        headers={"Cache-Control": "public, max-age=86400"},  # 1 天缓存
+    )
 
 
 # ===== v2.0: 合并的错题讲解端点 =====

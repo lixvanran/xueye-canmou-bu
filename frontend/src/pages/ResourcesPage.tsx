@@ -8,6 +8,20 @@ import { streamExplainMistake, getWeakTopics } from '@/api/workspace'
 import type { Resource, ResourceType } from '@/types'
 
 const subjects = ['数学', '语文', '英语', '物理', '化学', '生物', '历史', '地理', '政治', '计算机', '其他']
+
+// v0.1.7+: 把 db 里的 file_path 转成 backend image 代理 URL
+// db 存的是 '/uploads/xxx.png', 前端改成 '/api/workspace/image/xxx.png'
+// (跨 origin OK, 跳过 vite proxy, 兼容多 uploads 目录)
+function _toImageUrl(file_path: string | null | undefined): string {
+  if (!file_path) return ''
+  if (file_path.startsWith('/api/')) return file_path  // 已经是 proxy URL
+  if (file_path.startsWith('/uploads/')) {
+    return `/api/workspace/image/${file_path.replace('/uploads/', '')}`
+  }
+  // 兜底: 如果是绝对路径, 取 basename
+  const parts = file_path.split('/')
+  return `/api/workspace/image/${parts[parts.length - 1]}`
+}
 const errorTypes = [
   { value: 'calculation', label: '计算错误', color: 'bg-yellow-100 text-yellow-700' },
   { value: 'concept', label: '概念不清', color: 'bg-red-100 text-red-700' },
@@ -393,7 +407,8 @@ export default function ResourcesPage() {
                   <div className="flex items-start gap-4">
                     {r.file_path ? (
                       r.file_path.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                        <img src={r.file_path} alt="" className="w-16 h-16 object-cover rounded border" />
+                        // v0.1.7+: 转成 backend image 代理 URL (跨 origin + 兼容多 uploads 目录)
+                        <img src={_toImageUrl(r.file_path)} alt="" className="w-16 h-16 object-cover rounded border" onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '0.3' }} />
                       ) : (
                         <div className="w-16 h-16 rounded bg-blue-100 flex items-center justify-center">
                           <FileText size={24} className="text-blue-600" />
@@ -761,9 +776,10 @@ export default function ResourcesPage() {
                 <div>
                   <h4 className="text-sm font-semibold text-gray-700 mb-1">附件</h4>
                   {selected.file_path.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                    <img src={selected.file_path} className="max-w-full rounded border" />
+                    // v0.1.7+: 转成 backend image 代理 URL (跨 origin + 兼容多 uploads 目录)
+                    <img src={_toImageUrl(selected.file_path)} className="max-w-full rounded border" onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '0.3' }} />
                   ) : (
-                    <a href={selected.file_path} target="_blank" className="text-blue-600 text-sm underline">
+                    <a href={_toImageUrl(selected.file_path)} target="_blank" className="text-blue-600 text-sm underline">
                       {selected.file_path}
                     </a>
                   )}

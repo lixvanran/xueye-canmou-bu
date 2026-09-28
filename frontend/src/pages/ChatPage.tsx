@@ -28,7 +28,7 @@ import {
   MessageSquare, GraduationCap, MessageCircle, ChevronDown, Loader2, AlertCircle, CheckCircle2,
   UserCircle2, BookOpen, Target, X, Sparkles, Search, Calendar, Clock, ArrowRight,
   Cpu, Brain, Wrench, Database, Network, Activity, GitBranch, ChevronRight as ChevronRightSm,
-  Users, Zap, Timer, Layers,
+  Users, Zap, Timer, Layers, Paperclip, FileText as FileIcon,
 } from 'lucide-react'
 import api from '@/api/client'
 import { listResources } from '@/api/resources'
@@ -183,6 +183,10 @@ export default function ChatPage() {
 
   // v0.1.7+: 团队模式 — persona multi-select (2-5 个) + team SSE 流式
   const [teamPersonas, setTeamPersonas] = useState<string[]>(['teacher_zhang', 'musk', 'munger'])
+  // v0.1.7+: 文件上传 — 用户点 📎 选文件, 传到 workspace/uploads/
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{name: string; size: number; path: string}>>([])
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [teamRunning, setTeamRunning] = useState(false)
   // 当前 team run 的 multi-trace 状态:
   //   teamStart: { team_id, total_personas, scenario, started_at }
@@ -626,6 +630,39 @@ export default function ChatPage() {
     setTeamPersonas((cur) =>
       cur.includes(p) ? cur.filter(x => x !== p) : (cur.length >= 6 ? cur : [...cur, p])
     )
+  }
+
+  // v0.1.7+: 文件上传 — 选文件 → POST /api/workspace/upload
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    setUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('user_id', '1')
+        const resp = await fetch('/api/workspace/upload', { method: 'POST', body: fd })
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({ detail: resp.statusText }))
+          setPersonaMsg({ type: 'err', text: `上传失败: ${err.detail || resp.statusText}` })
+          continue
+        }
+        const data = await resp.json()
+        setUploadedFiles((prev) => [...prev, { name: data.filename, size: data.size, path: data.path }])
+        setPersonaMsg({ type: 'ok', text: `已上传 ${data.original_name} (${(data.size/1024).toFixed(1)} KB) — 继续在聊天里说'把上传文件夹里的错题整理一下'` })
+      }
+    } catch (err: any) {
+      setPersonaMsg({ type: 'err', text: `上传异常: ${err.message || err}` })
+    } finally {
+      setUploading(false)
+      // 清空 file input
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const removeUploadedFile = (name: string) => {
+    setUploadedFiles((prev) => prev.filter(f => f.name !== name))
   }
 
   const handleAbort = () => {
@@ -1370,46 +1407,81 @@ export default function ChatPage() {
 
       {/* 输入区 (简化) */}
       <div className="border-t border-black/5 bg-white/60 backdrop-blur-xl p-4">
-        <div className="max-w-3xl mx-auto flex gap-2 items-end">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              // v0.1.6: Enter 发送, Shift+Enter 换行
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                if (activeTab === 'team') handleTeamSend()
-                else handleSend()
-              }
-            }}
-            placeholder={activeTab === 'team'
-              ? `团队模式: 同时拉 ${teamPersonas.length} 个 Agent 给你多视角建议 (Enter 启动)`
-              : `输入消息 (当前 tab: ${tabConfig.label}, Enter 发送, Shift+Enter 换行)`}
-            className="flex-1 px-3 py-2 bg-white border border-black/10 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300"
-            rows={2}
-            disabled={sending || teamRunning}
-          />
-          {(sending || teamRunning) ? (
-            <button
-              onClick={handleAbort}
-              className="px-4 py-2 bg-red-500 text-white text-sm rounded-full hover:bg-red-600 flex items-center gap-1"
-            >
-              停止
-            </button>
-          ) : (
-            <button
-              onClick={activeTab === 'team' ? handleTeamSend : handleSend}
-              disabled={!input.trim() || (activeTab === 'team' && teamPersonas.length < 1)}
-              className={`px-4 py-2 text-white text-sm rounded-full disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 ${
-                activeTab === 'team'
-                  ? 'bg-amber-600 hover:bg-amber-700'
-                  : 'bg-zinc-900 hover:bg-zinc-800'
-              }`}
-            >
-              {activeTab === 'team' && <Users size={13} />}
-              {activeTab === 'team' ? `团队 (${teamPersonas.length})` : '发送'}
-            </button>
+        <div className="max-w-3xl mx-auto">
+          {/* v0.1.7+: 已上传文件 chips (附在输入框上方) */}
+          {uploadedFiles.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {uploadedFiles.map(f => (
+                <div key={f.name} className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs text-blue-700">
+                  <FileIcon size={11} />
+                  <span className="font-medium">{f.name}</span>
+                  <span className="text-blue-400 text-[10px]">({(f.size/1024).toFixed(1)} KB)</span>
+                  <button onClick={() => removeUploadedFile(f.name)} className="ml-1 text-blue-400 hover:text-blue-700">
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
+          <div className="flex gap-2 items-end">
+            {/* v0.1.7+: 上传按钮 — 替代手动拖入 workspace/uploads/ */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.txt,.md"
+              onChange={handleFileSelect}
+              className="hidden"
+              disabled={uploading}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || sending || teamRunning}
+              title="上传文件 (图片 / PDF / Word) 到 workspace/uploads/"
+              className="px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 text-sm"
+            >
+              {uploading ? <Loader2 size={14} className="animate-spin" /> : <Paperclip size={14} />}
+            </button>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                // v0.1.6: Enter 发送, Shift+Enter 换行
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  if (activeTab === 'team') handleTeamSend()
+                  else handleSend()
+                }
+              }}
+              placeholder={activeTab === 'team'
+                ? `团队模式: 同时拉 ${teamPersonas.length} 个 Agent 给你多视角建议 (Enter 启动)`
+                : `输入消息 (当前 tab: ${tabConfig.label}, Enter 发送, Shift+Enter 换行)`}
+              className="flex-1 px-3 py-2 bg-white border border-black/10 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300"
+              rows={2}
+              disabled={sending || teamRunning}
+            />
+            {(sending || teamRunning) ? (
+              <button
+                onClick={handleAbort}
+                className="px-4 py-2 bg-red-500 text-white text-sm rounded-full hover:bg-red-600 flex items-center gap-1"
+              >
+                停止
+              </button>
+            ) : (
+              <button
+                onClick={activeTab === 'team' ? handleTeamSend : handleSend}
+                disabled={!input.trim() || (activeTab === 'team' && teamPersonas.length < 1)}
+                className={`px-4 py-2 text-white text-sm rounded-full disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 ${
+                  activeTab === 'team'
+                    ? 'bg-amber-600 hover:bg-amber-700'
+                    : 'bg-zinc-900 hover:bg-zinc-800'
+                }`}
+              >
+                {activeTab === 'team' && <Users size={13} />}
+                {activeTab === 'team' ? `团队 (${teamPersonas.length})` : '发送'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
