@@ -15,6 +15,7 @@ from app.routers import api_key as api_key_router
 # v2.0: 新增路由 — 日程/学习计划 + nuwa skill 框架
 from app.routers import schedule as schedule_router
 from app.routers import nuwa_skill as nuwa_skill_router
+from app.routers import team as team_router
 import logging
 import time
 
@@ -155,6 +156,7 @@ app.include_router(api_key_router.router)
 # v2.0: 新增
 app.include_router(schedule_router.router)
 app.include_router(nuwa_skill_router.router)
+app.include_router(team_router.router)
 
 
 

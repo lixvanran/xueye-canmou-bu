@@ -911,12 +911,6 @@ PERSONA_TEMPLATES = {
     "x_mastery":     _BASE_X_MASTERY,
 }
 
-PERSONA_TEMPLATES = {
-    "teacher_zhang": _BASE_TEACHER_ZHANG,
-    "xuejie":        _BASE_XUEJIE,
-    "duanzishou":    _BASE_DUANZISHOU,
-}
-
 # 默认仍叫 BASE_PERSONA 以保持向后兼容 (其他 import 路径), 但现在指向 teacher_zhang 模板的拼装结果
 BASE_PERSONA = _BASE_TEACHER_ZHANG + _PERSONA_COMMON
 
