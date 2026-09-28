@@ -11,6 +11,12 @@
  * v2.0 增量:
  *  - 顶部历史会话搜索框 + scenario 过滤 chip
  *  - 答疑 tab 加 "帮我安排学习计划" quick action (触发 chat message 走 schedule 工具)
+ *
+ * v0.1.7+ 增量:
+ *  - 加 '团队' tab (并行 Agent 团队模式)
+ *    • persona multi-select chips (选 2-5 个, 后端会跑 N 个 sub-agent 并行)
+ *    • 团队模式 SSE 流: [TEAM_START] [SUB_START] [SUB_DONE] [SYNTH_START] [SYNTH_CHUNK] [SYNTH_DONE] [TEAM_END]
+ *    • multi-trace UI: 合成主答 + N 个 sub-agent 折叠卡 (每个显示 latency_ms + 内容)
  */
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -22,6 +28,7 @@ import {
   MessageSquare, GraduationCap, MessageCircle, ChevronDown, Loader2, AlertCircle, CheckCircle2,
   UserCircle2, BookOpen, Target, X, Sparkles, Search, Calendar, Clock, ArrowRight,
   Cpu, Brain, Wrench, Database, Network, Activity, GitBranch, ChevronRight as ChevronRightSm,
+  Users, Zap, Timer, Layers,
 } from 'lucide-react'
 import api from '@/api/client'
 import { listResources } from '@/api/resources'
@@ -30,7 +37,7 @@ import { getConversation } from '@/api/conversations'
 import { streamChat } from '@/api/chat'
 import type { Resource, WeakTopic, WeakTopicsResponse } from '@/types'
 
-type ChatTab = 'qa' | 'volunteer' | 'chitchat'
+type ChatTab = 'qa' | 'volunteer' | 'chitchat' | 'team'
 
 const TAB_STORAGE_KEY = 'chat_active_tab'
 const CONV_STORAGE_KEY = 'chat_conversation_ids' // { qa: number|null, volunteer: number|null, chitchat: number|null }
@@ -68,6 +75,14 @@ const TABS: TabConfig[] = [
     color: 'text-violet-700',
     bg: 'bg-violet-50 border-violet-200',
     description: '非正式对话, 选个人格陪你聊 — 切换人格需重新选择',
+  },
+  {
+    key: 'team',
+    label: '团队',
+    icon: Users,
+    color: 'text-amber-700',
+    bg: 'bg-amber-50 border-amber-200',
+    description: '并行多 Agent 团队 — 同时拉 2-5 个人格给你不同的视角, 综合给最终建议',
   },
 ]
 
@@ -130,7 +145,7 @@ function loadActiveTab(): ChatTab {
 }
 
 function loadConvIds(): Record<ChatTab, number | null> {
-  const base: Record<ChatTab, number | null> = { qa: null, volunteer: null, chitchat: null }
+  const base: Record<ChatTab, number | null> = { qa: null, volunteer: null, chitchat: null, team: null }
   try {
     const raw = localStorage.getItem(CONV_STORAGE_KEY)
     if (raw) {
@@ -165,6 +180,19 @@ export default function ChatPage() {
   // v0.1.7: 当前正在流的 trace (assistant 消息接收 event 时累积)
   const [currentTrace, setCurrentTrace] = useState<any>(null)
   const [input, setInput] = useState('')
+
+  // v0.1.7+: 团队模式 — persona multi-select (2-5 个) + team SSE 流式
+  const [teamPersonas, setTeamPersonas] = useState<string[]>(['teacher_zhang', 'musk', 'munger'])
+  const [teamRunning, setTeamRunning] = useState(false)
+  // 当前 team run 的 multi-trace 状态:
+  //   teamStart: { team_id, total_personas, scenario, started_at }
+  //   subs: Record<sub_id, { persona, latency_ms, content_length, model_used, error }>
+  //   synthContent: string (累积)
+  //   synthMeta: { persona, latency_ms, content_length, model_used }
+  //   teamEnd: { team_id, total_latency_ms }
+  const [teamTrace, setTeamTrace] = useState<{
+    teamStart: any; subs: Record<string, any>; synthContent: string; synthMeta: any; teamEnd: any
+  } | null>(null)
 
   // persona 状态 (仅 chitchat 有效)
   const [persona, setPersona] = useState<string>('teacher_zhang')
@@ -324,6 +352,7 @@ export default function ChatPage() {
     qa: 'chat',
     volunteer: 'volunteer',
     chitchat: 'chitchat',
+    team: 'volunteer',  // 默认场景: 报志愿 (team 多用)
   }
 
   const handleSend = async () => {
@@ -489,6 +518,114 @@ export default function ChatPage() {
       // 滚到底
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     }
+  }
+
+  // v0.1.7+: 团队模式发送 — POST /api/agent/team SSE 流式
+  const handleTeamSend = async () => {
+    const text = input.trim()
+    if (!text || teamRunning) return
+    if (teamPersonas.length < 1) {
+      setPersonaMsg({ type: 'err', text: '至少选 1 个人格 (建议 3-5 个)' })
+      return
+    }
+    if (teamPersonas.length > 6) {
+      setPersonaMsg({ type: 'err', text: '最多 6 个人格 (避免配额爆炸)' })
+      return
+    }
+    const scenario = tabToScenario[activeTab] || 'chat'
+    setTeamRunning(true)
+    setInput('')
+    // 立即清空旧 team trace
+    setTeamTrace({
+      teamStart: null,
+      subs: {},
+      synthContent: '',
+      synthMeta: null,
+      teamEnd: null,
+    })
+
+    try {
+      const resp = await fetch('/api/agent/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          personas: teamPersonas,
+          scenario,
+          user_id: 1,
+          synth_persona: persona,  // 用当前 persona 作为 synthesizer
+        }),
+      })
+      if (!resp.ok || !resp.body) {
+        const err = await resp.text()
+        throw new Error(`team API ${resp.status}: ${err}`)
+      }
+      const reader = resp.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      // SSE 事件正则: data: [EVENT]{json}[/EVENT]\n\n
+      const evRe = /\[(TEAM_START|SUB_START|SUB_DONE|SYNTH_START|SYNTH_CHUNK|SYNTH_DONE|TEAM_END|ERROR)\](\{.*?\})\[\/\1\]/g
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        let m: RegExpExecArray | null
+        while ((m = evRe.exec(buf)) !== null) {
+          const tag = m[1]
+          const data = JSON.parse(m[2])
+          setTeamTrace((prev) => {
+            const cur = prev || { teamStart: null, subs: {}, synthContent: '', synthMeta: null, teamEnd: null }
+            const next = { ...cur, subs: { ...cur.subs } }
+            if (tag === 'TEAM_START') next.teamStart = data
+            else if (tag === 'SUB_START') {
+              next.subs[data.sub_id] = { ...next.subs[data.sub_id], persona: data.persona, started_at: data.started_at }
+            }
+            else if (tag === 'SUB_DONE') {
+              next.subs[data.sub_id] = {
+                ...(next.subs[data.sub_id] || {}),
+                persona: data.persona,
+                latency_ms: data.latency_ms,
+                content_length: data.content_length,
+                reasoning_length: data.reasoning_length,
+                model_used: data.model_used,
+                error: data.error,
+              }
+            }
+            else if (tag === 'SYNTH_START') {
+              next.synthMeta = { ...(next.synthMeta || {}), persona: data.persona, started_at: data.started_at }
+            }
+            else if (tag === 'SYNTH_CHUNK') {
+              next.synthContent = (next.synthContent || '') + (data.content || '')
+            }
+            else if (tag === 'SYNTH_DONE') {
+              next.synthMeta = { ...(next.synthMeta || {}), ...data }
+            }
+            else if (tag === 'TEAM_END') {
+              next.teamEnd = data
+            }
+            else if (tag === 'ERROR') {
+              next.teamEnd = { error: data.error }
+            }
+            return next
+          })
+        }
+        // 截断 buf 到已处理的部分 (避免 reexec 重复)
+        const lastIdx = buf.lastIndexOf('[/')
+        if (lastIdx > 0) buf = buf.slice(lastIdx)
+      }
+    } catch (e: any) {
+      console.error('team send failed:', e)
+      setPersonaMsg({ type: 'err', text: `团队模式失败: ${e.message || e}` })
+    } finally {
+      setTeamRunning(false)
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    }
+  }
+
+  const toggleTeamPersona = (p: string) => {
+    setTeamPersonas((cur) =>
+      cur.includes(p) ? cur.filter(x => x !== p) : (cur.length >= 6 ? cur : [...cur, p])
+    )
   }
 
   const handleAbort = () => {
@@ -1009,11 +1146,130 @@ export default function ChatPage() {
 
           {/* 消息列表 — v0.1.6 渲染 user/assistant 区分 + 流式光标 */}
           <div className="bg-white/70 backdrop-blur border border-black/5 rounded-2xl p-5 shadow-sm min-h-[200px] max-h-[calc(100vh-280px)] overflow-y-auto">
-            {messages.length === 0 ? (
+            {messages.length === 0 && activeTab !== 'team' ? (
               <div className="text-center text-zinc-400 py-10">
                 <tabConfig.icon size={36} className="mx-auto mb-3 text-zinc-300" />
                 <div className="text-sm">开始和 {tabConfig.label} 助手对话</div>
                 <div className="text-xs mt-1">输入消息后按 Enter 或点「发送」</div>
+              </div>
+            ) : activeTab === 'team' && !teamTrace ? (
+              // v0.1.7+: 团队模式欢迎卡片 + multi-select
+              <div className="space-y-4 py-2">
+                <div className="text-center text-zinc-500">
+                  <Users size={36} className="mx-auto mb-3 text-amber-400" />
+                  <div className="text-sm font-medium text-zinc-700">并行 Agent 团队模式</div>
+                  <div className="text-xs mt-1">选 2-5 个人格, 同时拉多个视角, 综合给最终建议</div>
+                </div>
+                <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-4">
+                  <div className="text-xs font-semibold text-amber-900 mb-2 flex items-center gap-2">
+                    <Layers size={13} /> 选择参与 Agent (已选 {teamPersonas.length} / 最多 6)
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PERSONAS.map(p => {
+                      const sel = teamPersonas.includes(p.value)
+                      return (
+                        <button
+                          key={p.value}
+                          onClick={() => toggleTeamPersona(p.value)}
+                          className={`px-2.5 py-1 text-xs rounded-full border transition-colors flex items-center gap-1 ${
+                            sel
+                              ? 'bg-amber-600 text-white border-amber-600'
+                              : 'bg-white border-amber-300 text-amber-800 hover:bg-amber-100'
+                          }`}
+                        >
+                          <span>{p.emoji}</span>
+                          <span>{p.label}</span>
+                          {sel && <CheckCircle2 size={11} />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-zinc-500">
+                  <div className="bg-zinc-50 rounded-lg p-2">
+                    <div className="font-medium text-zinc-700">⚡ 并行</div>
+                    <div>所有 Agent 同时跑, 总耗时 ≈ 最慢的那个</div>
+                  </div>
+                  <div className="bg-zinc-50 rounded-lg p-2">
+                    <div className="font-medium text-zinc-700">🔀 综合</div>
+                    <div>由「{PERSONAS.find(p => p.value === persona)?.label || persona}」综合所有视角</div>
+                  </div>
+                </div>
+              </div>
+            ) : activeTab === 'team' && teamTrace ? (
+              // v0.1.7+: 团队模式 multi-trace 结果
+              <div className="space-y-3">
+                {teamTrace.teamStart && (
+                  <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <Zap size={12} />
+                    <span>团队启动 · {teamTrace.teamStart.total_personas} 个 Agent 并行 · 场景 {teamTrace.teamStart.scenario}</span>
+                  </div>
+                )}
+                {/* 合成主答 */}
+                {teamTrace.synthContent && (
+                  <div className="bg-gradient-to-br from-amber-50 to-white border-2 border-amber-300 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Brain size={14} className="text-amber-700" />
+                      <span className="text-sm font-semibold text-amber-900">综合建议 ({teamTrace.synthMeta?.persona || 'synth'})</span>
+                      {teamTrace.synthMeta?.latency_ms && (
+                        <span className="text-xs text-amber-600 ml-auto flex items-center gap-1">
+                          <Timer size={11} /> {(teamTrace.synthMeta.latency_ms / 1000).toFixed(2)}s
+                        </span>
+                      )}
+                    </div>
+                    <div className="prose prose-sm max-w-none text-zinc-800">
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeHighlight, rehypeKatex]}>
+                        {teamTrace.synthContent}
+                      </ReactMarkdown>
+                      {teamRunning && !teamTrace.teamEnd && (
+                        <span className="inline-block ml-1 w-2 h-3 bg-amber-500 animate-pulse" />
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* sub-agent 卡片 */}
+                {Object.entries(teamTrace.subs).length > 0 && (
+                  <details className="bg-zinc-50 border border-zinc-200 rounded-xl">
+                    <summary className="px-3 py-2 cursor-pointer text-xs font-medium text-zinc-700 flex items-center gap-2 select-none">
+                      <Users size={12} />
+                      <span>{Object.keys(teamTrace.subs).length} 个 sub-agent 视角</span>
+                      <span className="ml-auto text-zinc-400">点击展开</span>
+                    </summary>
+                    <div className="px-3 pb-3 space-y-2">
+                      {Object.entries(teamTrace.subs).map(([subId, s]: [string, any]) => {
+                        const pEntry = PERSONAS.find(p => p.value === s.persona)
+                        return (
+                          <div key={subId} className="bg-white border border-zinc-200 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-base">{pEntry?.emoji || '🤖'}</span>
+                              <span className="text-xs font-semibold text-zinc-800">{pEntry?.label || s.persona}</span>
+                              {s.latency_ms != null && (
+                                <span className="text-[10px] text-zinc-500 ml-auto flex items-center gap-1">
+                                  <Timer size={10} /> {(s.latency_ms / 1000).toFixed(2)}s
+                                </span>
+                              )}
+                              {s.content_length != null && (
+                                <span className="text-[10px] text-zinc-400">{s.content_length} 字</span>
+                              )}
+                              {s.error && (
+                                <span className="text-[10px] text-red-600 ml-1">失败: {s.error.slice(0, 30)}</span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-zinc-400 mb-1">
+                              {subId} · {s.model_used?.split('/').pop() || ''}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </details>
+                )}
+                {/* TEAM_END 总结 */}
+                {teamTrace.teamEnd && (
+                  <div className="text-[10px] text-zinc-400 text-center">
+                    团队完成 · 总耗时 {(teamTrace.teamEnd.total_latency_ms / 1000).toFixed(2)}s · 团队 ID {teamTrace.teamEnd.team_id}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
@@ -1125,15 +1381,18 @@ export default function ChatPage() {
               // v0.1.6: Enter 发送, Shift+Enter 换行
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                handleSend()
+                if (activeTab === 'team') handleTeamSend()
+                else handleSend()
               }
             }}
-            placeholder={`输入消息 (当前 tab: ${tabConfig.label}, Enter 发送, Shift+Enter 换行)`}
+            placeholder={activeTab === 'team'
+              ? `团队模式: 同时拉 ${teamPersonas.length} 个 Agent 给你多视角建议 (Enter 启动)`
+              : `输入消息 (当前 tab: ${tabConfig.label}, Enter 发送, Shift+Enter 换行)`}
             className="flex-1 px-3 py-2 bg-white border border-black/10 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300"
             rows={2}
-            disabled={sending}
+            disabled={sending || teamRunning}
           />
-          {sending ? (
+          {(sending || teamRunning) ? (
             <button
               onClick={handleAbort}
               className="px-4 py-2 bg-red-500 text-white text-sm rounded-full hover:bg-red-600 flex items-center gap-1"
@@ -1142,11 +1401,16 @@ export default function ChatPage() {
             </button>
           ) : (
             <button
-              onClick={handleSend}
-              disabled={!input.trim()}
-              className="px-4 py-2 bg-zinc-900 text-white text-sm rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+              onClick={activeTab === 'team' ? handleTeamSend : handleSend}
+              disabled={!input.trim() || (activeTab === 'team' && teamPersonas.length < 1)}
+              className={`px-4 py-2 text-white text-sm rounded-full disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 ${
+                activeTab === 'team'
+                  ? 'bg-amber-600 hover:bg-amber-700'
+                  : 'bg-zinc-900 hover:bg-zinc-800'
+              }`}
             >
-              发送
+              {activeTab === 'team' && <Users size={13} />}
+              {activeTab === 'team' ? `团队 (${teamPersonas.length})` : '发送'}
             </button>
           )}
         </div>
