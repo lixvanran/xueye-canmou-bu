@@ -1,73 +1,63 @@
 @echo off
 REM ===========================================
 REM   LocalAgent v0.1.7 - One-Click Launcher
-REM   NO chcp (causes flash close in Win11 Chinese)
-REM   Pure ASCII, no BOM
+REM   PURE ASCII — no Chinese chars in this file.
+REM   Why: cmd.exe default codepage is GBK on Chinese Windows;
+REM         if this file is saved as UTF-8 (no BOM), every Chinese
+REM         char / goto label / echo gets mangled -> script breaks.
+REM   Workaround: use powershell for ALL Chinese output, and keep
+REM         batch labels ASCII.
 REM
-REM   v0.1.7+: 自动检测 Python / Node, 没装就用 winget 装 (Win10 1809+/Win11 自带)
+REM   v0.1.7+: auto-install Python / Node via winget if missing
+REM            (Win10 1809+ / Win11; user-scope)
 REM ===========================================
 
 cd /d "%~dp0"
 
+REM --- msg helper: print Chinese via PowerShell (UTF-8) ---
+set "PSMSG=powershell -NoProfile -Command "Write-Host""
+
 echo.
-echo ============================================
-echo   LocalAgent v0.1.7
-echo   (本地化 AI Agent 平台)
-echo ============================================
-echo.
-echo Working dir: %CD%
+echo ============================================================
+echo   LocalAgent v0.1.7  (local AI Agent platform)
+echo ============================================================
 echo.
 
 REM ===== Check Python =====
-echo [1/6] Checking Python...
+%PSMSG% "[1/6] Checking Python ..." -ForegroundColor Cyan
 where python >nul 2>&1
 if errorlevel 1 goto no_python
 python --version
 goto python_ok
 
 :no_python
-echo.
-echo ============================================================
-echo  Python 没装, 但启动.bat 可以自动帮你装 (推荐)
-echo ============================================================
-echo.
-echo  1) 自动装 (用 winget, Win10 1809+/Win11 自带, 不用管理员权限, ~30MB, 1-2 min)
-echo  2) 手动装 — 我自己来
-echo.
-set /p "PY_CHOICE=选择 [默认 1]: "
-if "%PY_CHOICE%"=="2" goto manual_python
+%PSMSG% "  -> Python not found. Auto-install via winget? (Y/n)" -ForegroundColor Yellow
+set /p "PY_CHOICE="
+if /I "%PY_CHOICE%"=="n" goto manual_python
 
 where winget >nul 2>&1
 if errorlevel 1 (
-    echo.
-    echo [ERROR] winget 不可用 — 你的 Windows 太旧 (Win10 1809 以下)
-    echo 请手动装 Python 3.11+: https://www.python.org/downloads/
-    echo 关键: 安装时勾 'Add Python to PATH'
-    echo.
+    %PSMSG% "  [ERROR] winget is not available (Windows too old, need 1809+)." -ForegroundColor Red
+    %PSMSG% "  Please install Python 3.11+ manually: https://www.python.org/downloads/" -ForegroundColor Yellow
+    %PSMSG% "  IMPORTANT: tick 'Add Python to PATH' during install." -ForegroundColor Yellow
     pause
     exit /b 1
 )
 
-echo.
-echo [自动装 Python 3.11] 用 winget 安装中 ...
+%PSMSG% "  [AUTO] Installing Python 3.11 via winget (user-scope, ~30MB, 1-2 min) ..." -ForegroundColor Cyan
 winget install -e --id Python.Python.3.11 --scope user --silent --accept-source-agreements --accept-package-agreements
 if errorlevel 1 (
-    echo.
-    echo [ERROR] winget 装失败, 请手动装: https://www.python.org/downloads/
-    echo 关键: 勾 'Add Python to PATH', 装完重新跑 启动.bat
+    %PSMSG% "  [ERROR] winget install failed. Please install Python manually." -ForegroundColor Red
     pause
     exit /b 1
 )
-echo.
-echo [OK] Python 3.11 装完, 配置 PATH ...
-
-REM winget Python 3.11 user scope 安装路径
+%PSMSG% "  [OK] Python 3.11 installed. Configuring PATH ..." -ForegroundColor Green
+REM winget Python 3.11 user-scope path
 set "PATH=%LOCALAPPDATA%\Programs\Python\Python311;%LOCALAPPDATA%\Programs\Python\Python311\Scripts;%PATH%"
 where python >nul 2>&1
 if errorlevel 1 (
-    echo.
-    echo [WARN] Python 装好了, 但 PATH 没刷新 (这是 Windows 已知问题)
-    echo 请直接重新跑 启动.bat 即可
+    %PSMSG% "  [WARN] Python installed but PATH not refreshed (Windows quirk)." -ForegroundColor Yellow
+    %PSMSG% "  Please re-run this script to pick it up." -ForegroundColor Yellow
     pause
     exit /b 1
 )
@@ -75,10 +65,8 @@ python --version
 goto python_ok
 
 :manual_python
-echo.
-echo 请打开 https://www.python.org/downloads/ 下载 Python 3.11+
-echo 关键: 安装时勾 'Add Python to PATH'
-echo 装完重新跑 启动.bat
+%PSMSG% "  Please install Python 3.11+ from https://www.python.org/downloads/" -ForegroundColor Yellow
+%PSMSG% "  IMPORTANT: tick 'Add Python to PATH'. Then re-run this script." -ForegroundColor Yellow
 pause
 exit /b 1
 
@@ -86,53 +74,39 @@ exit /b 1
 
 REM ===== Check Node.js =====
 echo.
-echo [2/6] Checking Node.js...
+%PSMSG% "[2/6] Checking Node.js ..." -ForegroundColor Cyan
 where node >nul 2>&1
 if errorlevel 1 goto no_node
 node --version
 goto node_ok
 
 :no_node
-echo.
-echo ============================================================
-echo  Node.js 没装, 但启动.bat 可以自动帮你装 (推荐)
-echo ============================================================
-echo.
-echo  1) 自动装 (用 winget, 用户级, ~30MB, 1 min)
-echo  2) 手动装 — 我自己来
-echo.
-set /p "NODE_CHOICE=选择 [默认 1]: "
-if "%NODE_CHOICE%"=="2" goto manual_node
+%PSMSG% "  -> Node.js not found. Auto-install via winget? (Y/n)" -ForegroundColor Yellow
+set /p "NODE_CHOICE="
+if /I "%NODE_CHOICE%"=="n" goto manual_node
 
 where winget >nul 2>&1
 if errorlevel 1 (
-    echo.
-    echo [ERROR] winget 不可用
-    echo 请手动装 Node.js 20+: https://nodejs.org/
+    %PSMSG% "  [ERROR] winget is not available." -ForegroundColor Red
+    %PSMSG% "  Please install Node.js 20+ manually: https://nodejs.org/" -ForegroundColor Yellow
     pause
     exit /b 1
 )
 
-echo.
-echo [自动装 Node.js 20 LTS] 用 winget 安装中 ...
+%PSMSG% "  [AUTO] Installing Node.js 20 LTS via winget (user-scope, ~30MB, 1 min) ..." -ForegroundColor Cyan
 winget install -e --id OpenJS.NodeJS.LTS --scope user --silent --accept-source-agreements --accept-package-agreements
 if errorlevel 1 (
-    echo.
-    echo [ERROR] winget 装失败, 请手动装: https://nodejs.org/
-    echo 装完重新跑 启动.bat
+    %PSMSG% "  [ERROR] winget install failed. Please install Node.js manually." -ForegroundColor Red
     pause
     exit /b 1
 )
-echo.
-echo [OK] Node.js 装完, 配置 PATH ...
-
-REM winget OpenJS.NodeJS.LTS user scope 安装路径
+%PSMSG% "  [OK] Node.js installed. Configuring PATH ..." -ForegroundColor Green
+REM winget Node.js LTS user-scope path
 set "PATH=%LOCALAPPDATA%\Programs\nodejs;%PATH%"
 where node >nul 2>&1
 if errorlevel 1 (
-    echo.
-    echo [WARN] Node.js 装好了, 但 PATH 没刷新 (Windows 已知问题)
-    echo 请直接重新跑 启动.bat 即可
+    %PSMSG% "  [WARN] Node.js installed but PATH not refreshed (Windows quirk)." -ForegroundColor Yellow
+    %PSMSG% "  Please re-run this script to pick it up." -ForegroundColor Yellow
     pause
     exit /b 1
 )
@@ -140,9 +114,8 @@ node --version
 goto node_ok
 
 :manual_node
-echo.
-echo 请打开 https://nodejs.org/ 下载 Node.js 20 LTS
-echo 装完重新跑 启动.bat
+%PSMSG% "  Please install Node.js 20 LTS from https://nodejs.org/" -ForegroundColor Yellow
+%PSMSG% "  Then re-run this script." -ForegroundColor Yellow
 pause
 exit /b 1
 
@@ -150,30 +123,28 @@ exit /b 1
 
 REM ===== Install backend deps if needed =====
 echo.
-echo [3/6] Checking backend dependencies (no actual import)...
+%PSMSG% "[3/6] Checking backend dependencies ..." -ForegroundColor Cyan
 python -c "import importlib.util; m=['fastapi','uvicorn','openai','sqlalchemy','duckduckgo_search','bs4','dotenv','multipart','aiofiles','httpx','sse_starlette','pydantic_settings']; x=[n for n in m if importlib.util.find_spec(n) is None]; print('OK' if not x else 'MISS:'+','.join(x))" 2>nul > "%TEMP%\zx-c.txt"
 set /p "CR=" < "%TEMP%\zx-c.txt" >nul
 del "%TEMP%\zx-c.txt" >nul 2>&1
 if not "%CR%"=="OK" goto need_install_backend
-echo [OK] Already installed
+%PSMSG% "  [OK] Already installed" -ForegroundColor Green
 goto backend_done
 
 :need_install_backend
-echo Installing backend dependencies (1-3 min)...
+%PSMSG% "  Installing backend dependencies (1-3 min) ..." -ForegroundColor Cyan
 python -m pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple >nul 2>&1
 python -m pip install -r backend\requirements.txt > "%TEMP%\zx-backend.log" 2>&1
 if errorlevel 1 goto backend_fail
-echo [OK] Backend deps installed
+%PSMSG% "  [OK] Backend deps installed" -ForegroundColor Green
 goto backend_done
 
 :backend_fail
+%PSMSG% "  [FAIL] Backend install error." -ForegroundColor Red
+%PSMSG% "  Last 10 lines of log:" -ForegroundColor Yellow
+powershell -NoProfile -Command "Get-Content '%TEMP%\zx-backend.log' -Tail 10"
 echo.
-echo [FAIL] Backend install error
-echo.
-echo Last 10 lines of log:
-powershell -Command "Get-Content '%TEMP%\zx-backend.log' -Tail 10" 2>nul
-echo.
-echo Full log: %TEMP%\zx-backend.log
+echo   Full log: %TEMP%\zx-backend.log
 pause
 exit /b 1
 
@@ -181,48 +152,46 @@ exit /b 1
 
 REM ===== Verify optional packages =====
 echo.
-echo [INFO] Checking optional packages (RAG)...
+%PSMSG% "[INFO] Optional packages (RAG):" -ForegroundColor Cyan
 python -c "import chromadb" 2>nul
 if errorlevel 1 (
-    echo        chromadb: NOT installed
+    echo    chromadb: NOT installed
 ) else (
-    echo        chromadb: OK
+    echo    chromadb: OK
 )
 python -c "import sentence_transformers" 2>nul
 if errorlevel 1 (
-    echo        sentence-transformers: NOT installed
+    echo    sentence-transformers: NOT installed
 ) else (
-    echo        sentence-transformers: OK
+    echo    sentence-transformers: OK
 )
 python -c "import duckduckgo_search" 2>nul
 if errorlevel 1 (
-    echo        duckduckgo-search: NOT installed
+    echo    duckduckgo-search: NOT installed
 ) else (
-    echo        duckduckgo-search: OK
+    echo    duckduckgo-search: OK
 )
 
 REM ===== Install frontend deps if needed =====
 echo.
-echo [4/6] Checking frontend dependencies...
+%PSMSG% "[4/6] Checking frontend dependencies ..." -ForegroundColor Cyan
 if exist "frontend\node_modules" goto frontend_done
-echo Installing frontend dependencies (2-5 min)...
+%PSMSG% "  Installing frontend dependencies (2-5 min) ..." -ForegroundColor Cyan
 call npm config set registry https://registry.npmmirror.com >nul 2>&1
 cd frontend
 call npm install --no-audit --no-fund --ignore-scripts > "%TEMP%\zx-frontend.log" 2>&1
 if errorlevel 1 goto frontend_fail
 cd ..
-echo [OK] Frontend deps installed
+%PSMSG% "  [OK] Frontend deps installed" -ForegroundColor Green
 goto frontend_done
 
 :frontend_fail
 cd ..
+%PSMSG% "  [FAIL] Frontend install error." -ForegroundColor Red
+%PSMSG% "  Last 10 lines of log:" -ForegroundColor Yellow
+powershell -NoProfile -Command "Get-Content '%TEMP%\zx-frontend.log' -Tail 10"
 echo.
-echo [FAIL] Frontend install error
-echo.
-echo Last 10 lines of log:
-powershell -Command "Get-Content '%TEMP%\zx-frontend.log' -Tail 10" 2>nul
-echo.
-echo Full log: %TEMP%\zx-frontend.log
+echo   Full log: %TEMP%\zx-frontend.log
 pause
 exit /b 1
 
@@ -230,21 +199,21 @@ exit /b 1
 
 REM ===== Check .env =====
 echo.
-echo [5/6] Checking configuration...
+%PSMSG% "[5/6] Checking configuration ..." -ForegroundColor Cyan
 if exist "backend\.env" goto env_ok
 if exist ".env" goto copy_env
 if exist ".env.example" goto create_env
-echo [WARN] No .env found, backend may not work
+%PSMSG% "  [WARN] No .env found, backend may not work." -ForegroundColor Yellow
 goto env_ok
 
 :copy_env
 copy /Y ".env" "backend\.env" >nul
-echo [OK] .env copied to backend
+%PSMSG% "  [OK] .env copied to backend\" -ForegroundColor Green
 goto env_ok
 
 :create_env
 copy /Y ".env.example" "backend\.env" >nul
-echo [OK] .env created from template
+%PSMSG% "  [OK] .env created from template" -ForegroundColor Green
 goto env_ok
 
 :env_ok
@@ -252,7 +221,7 @@ goto env_ok
 REM ===== Ensure LLM_FALLBACK_MODELS exists =====
 findstr /C:"LLM_FALLBACK_MODELS" "backend\.env" >nul 2>&1
 if errorlevel 1 (
-    echo [INFO] Adding LLM_FALLBACK_MODELS to backend\.env ...
+    %PSMSG% "  [INFO] Adding LLM_FALLBACK_MODELS to backend\.env ..." -ForegroundColor Cyan
     >> "backend\.env" echo.
     >> "backend\.env" echo # Auto-fallback models (v0.6.2+)
     >> "backend\.env" echo LLM_FALLBACK_MODELS=minimax/minimax-m2,minimax/minimax-m1,qwen/qwen-2.5-72b-instruct,meta-llama/llama-3.1-8b-instruct,deepseek/deepseek-chat
@@ -262,35 +231,34 @@ REM ===== Kill old processes =====
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8000 "') do taskkill /F /PID %%a >nul 2>&1
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3000 "') do taskkill /F /PID %%a >nul 2>&1
 
-REM ===== Start backend =====
+REM ===== Start backend + frontend =====
 echo.
-echo [6/6] Starting services...
+%PSMSG% "[6/6] Starting services ..." -ForegroundColor Cyan
 echo.
-echo [START] Backend on port 8000...
+%PSMSG% "  Starting backend on port 8000 ..." -ForegroundColor Cyan
 cd /d "%~dp0backend"
 start "Agent-Backend" cmd /K "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 cd /d "%~dp0"
 
-REM ===== Start frontend =====
-echo [START] Frontend on port 3000...
+%PSMSG% "  Starting frontend on port 3000 ..." -ForegroundColor Cyan
 cd /d "%~dp0frontend"
 start "Agent-Frontend" cmd /K "npm run dev"
 cd /d "%~dp0"
 
 echo.
-echo ============================================
-echo   [DONE] Services starting
-echo ============================================
+echo ============================================================
+%PSMSG% "  [DONE] Services starting" -ForegroundColor Green
+echo ============================================================
 echo.
-echo   Wait 5-10 seconds, then open browser:
+%PSMSG% "  Wait 5-10 seconds, then open browser:" -ForegroundColor Yellow
 echo.
 echo       http://localhost:3000
 echo.
-echo   Two service windows should be open:
-echo     Agent-Backend  (do not close)
-echo     Agent-Frontend (do not close)
+%PSMSG% "  Two service windows should be open:" -ForegroundColor Cyan
+%PSMSG% "    Agent-Backend  (do not close)" -ForegroundColor Cyan
+%PSMSG% "    Agent-Frontend (do not close)" -ForegroundColor Cyan
 echo.
-echo   To stop later, run the stop script.
+%PSMSG% "  To stop later, run the stop script." -ForegroundColor Cyan
 echo.
 timeout /t 5 /nobreak >nul
 exit /b 0
