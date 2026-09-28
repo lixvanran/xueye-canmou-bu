@@ -28,7 +28,7 @@ import {
   MessageSquare, GraduationCap, MessageCircle, ChevronDown, Loader2, AlertCircle, CheckCircle2,
   UserCircle2, BookOpen, Target, X, Sparkles, Search, Calendar, Clock, ArrowRight,
   Cpu, Brain, Wrench, Database, Network, Activity, GitBranch, ChevronRight as ChevronRightSm,
-  Users, Zap, Timer, Layers, Paperclip, FileText as FileIcon,
+  Users, Zap, Timer, Layers, Paperclip, FileText as FileIcon, Trash2,
 } from 'lucide-react'
 import api from '@/api/client'
 import { listResources } from '@/api/resources'
@@ -183,7 +183,7 @@ export default function ChatPage() {
 
   // v0.1.7+: 团队模式 — persona multi-select (2-5 个) + team SSE 流式
   const [teamPersonas, setTeamPersonas] = useState<string[]>(['teacher_zhang', 'musk', 'munger'])
-  // v0.1.7+: 文件上传 — 用户点 📎 选文件, 传到 workspace/uploads/
+  // v0.1.7+: 文件上传 — 用户点附件按钮选文件, 传到 workspace/uploads/
   const [uploadedFiles, setUploadedFiles] = useState<Array<{name: string; size: number; path: string}>>([])
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -314,6 +314,29 @@ export default function ChatPage() {
       setOpenConvMsg({ type: 'err', text: `打开失败: ${e?.message || '?'}` })
     } finally {
       setOpeningConvId(null)
+    }
+  }
+
+  // v0.1.7+: 删除历史会话 (调用 DELETE /api/conversations/{id})
+  const handleDeleteConversation = async (convId: number, e: React.MouseEvent) => {
+    e.stopPropagation()  // 阻止触发外层 onClick (打开会话)
+    if (!confirm(`确定删除会话 #${convId}? 这个操作不可撤销。`)) return
+    try {
+      await api.delete(`/conversations/${convId}`)
+      // 从搜索结果移除
+      setSearchResults(prev => prev.filter(r => r.id !== convId))
+      // 如果是当前打开的, 清掉
+      setConvIds(prev => {
+        const next = { ...prev }
+        for (const k of Object.keys(next) as ChatTab[]) {
+          if (next[k] === convId) next[k] = null
+        }
+        return next
+      })
+      setOpenConvMsg({ type: 'ok', text: `已删除会话 #${convId}` })
+      setTimeout(() => setOpenConvMsg(null), 2000)
+    } catch (e: any) {
+      setOpenConvMsg({ type: 'err', text: `删除失败: ${e?.message || '?'}` })
     }
   }
 
@@ -961,6 +984,14 @@ export default function ChatPage() {
                           <span className="text-zinc-400">#{r.id}</span>
                         </div>
                       </div>
+                      {/* v0.1.7+: 删除按钮 — 阻止冒泡到外层 onClick */}
+                      <Trash2
+                        size={13}
+                        className="text-zinc-300 hover:text-red-500 flex-shrink-0 cursor-pointer"
+                        onClick={(e) => handleDeleteConversation(r.id, e)}
+                        role="button"
+                        aria-label="删除会话"
+                      />
                       {openingConvId === r.id ? (
                         <Loader2 size={14} className="animate-spin text-violet-500" />
                       ) : (
@@ -1222,11 +1253,11 @@ export default function ChatPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs text-zinc-500">
                   <div className="bg-zinc-50 rounded-lg p-2">
-                    <div className="font-medium text-zinc-700">⚡ 并行</div>
+                    <div className="font-medium text-zinc-700">并行</div>
                     <div>所有 Agent 同时跑, 总耗时 ≈ 最慢的那个</div>
                   </div>
                   <div className="bg-zinc-50 rounded-lg p-2">
-                    <div className="font-medium text-zinc-700">🔀 综合</div>
+                    <div className="font-medium text-zinc-700">综合</div>
                     <div>由「{PERSONAS.find(p => p.value === persona)?.label || persona}」综合所有视角</div>
                   </div>
                 </div>
@@ -1582,7 +1613,7 @@ function AgentTracePanel({ trace, liveTrace }: { trace: any; liveTrace: any }) {
         title="Agent 完整运行过程 (分级路由 · RAG 检索 · 工具调用 · 思考过程)"
       >
         <Search size={12} />
-        <span>{isLive ? 'Agent 运行中...' : '🔍 Agent 完整运行过程'}</span>
+        <span>{isLive ? 'Agent 运行中...' : 'Agent 完整运行过程'}</span>
         {total != null && <span className="text-zinc-500">· {(total / 1000).toFixed(2)}s</span>}
         {expanded ? <ChevronDown size={12} /> : <ChevronRightSm size={12} />}
       </button>

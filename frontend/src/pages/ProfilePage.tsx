@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { User, Save, Sparkles, ChevronDown, ChevronUp, Bot, Activity, Brain, Database, Calendar, BarChart3 } from 'lucide-react'
+import { User, Save, Sparkles, ChevronDown, ChevronUp, Bot, Activity, Brain, Database, Calendar, BarChart3, CheckCircle2, AlertCircle } from 'lucide-react'
 import { getUserProfile, updateUserProfile, getEducationStages, getProfileView, getProfileStats, getLearningTimeline, getPersonas, getPersona, setPersona } from '@/api'
 import { useAppStore } from '@/store/useAppStore'
 import type { EducationStage, EducationStageOption, ProfileViewResponse } from '@/types'
@@ -14,16 +14,16 @@ import type { EducationStage, EducationStageOption, ProfileViewResponse } from '
 //   (后端 schema 保留, 不删列)
 
 const STAGE_OPTIONS = [
-  { value: '小学', label: '小学', icon: '🎒' },
-  { value: '初中', label: '初中', icon: '📚' },
-  { value: '高中', label: '高中', icon: '🎓' },
-  { value: '职高', label: '职高/中专', icon: '🔧' },
-  { value: '大专', label: '大专', icon: '🏫' },
-  { value: '本科', label: '本科', icon: '🎯' },
-  { value: '考研', label: '考研/硕士', icon: '📖' },
-  { value: '留学', label: '留学', icon: '✈️' },
-  { value: '在职', label: '在职/工作', icon: '💼' },
-  { value: '其他', label: '其他', icon: '✨' },
+  { value: '小学', label: '小学' },
+  { value: '初中', label: '初中' },
+  { value: '高中', label: '高中' },
+  { value: '职高', label: '职高/中专' },
+  { value: '大专', label: '大专' },
+  { value: '本科', label: '本科' },
+  { value: '考研', label: '考研/硕士' },
+  { value: '留学', label: '留学' },
+  { value: '在职', label: '在职/工作' },
+  { value: '其他', label: '其他' },
 ]
 
 const SUBJECT_CHOICES = [
@@ -61,6 +61,7 @@ export default function ProfilePage() {
     language: '中文',
   })
   const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState<{type: 'ok' | 'err'; text: string} | null>(null)  // v0.1.7+: 保存提示 toast
   const [profileView, setProfileView] = useState<ProfileViewResponse | null>(null)
   const [showAIView, setShowAIView] = useState(false)
   // v0.1.7: 学情统计 + 学习轨迹 + 人格
@@ -70,15 +71,30 @@ export default function ProfilePage() {
   const [currentPersona, setCurrentPersona] = useState<string>('teacher_zhang')
   const [personaSwitching, setPersonaSwitching] = useState<string | null>(null)
 
+  // v0.1.7+: 修复 — 主动 load userProfile (原来 useEffect 依赖 userProfile, 但 store 初始是 null, 永远不跑)
+  const [profileLoaded, setProfileLoaded] = useState(false)
   useEffect(() => {
-    loadStages()
-    if (userProfile) populateForm(userProfile)
+    if (profileLoaded) return  // 只 load 一次
+    let cancelled = false
+    ;(async () => {
+      try {
+        const p = await getUserProfile()
+        if (!cancelled) {
+          setUserProfile(p)
+          populateForm(p)
+          setProfileLoaded(true)
+        }
+      } catch (e) {
+        console.error('加载 profile 失败:', e)
+      }
+    })()
     loadProfileView()
     loadStats()
     loadTimeline()
     loadPersonas()
     loadCurrentPersona()
-  }, [userProfile])
+    return () => { cancelled = true }
+  }, [])
 
   const loadStats = async () => {
     try { setStats(await getProfileStats()) } catch (e) { console.error(e) }
@@ -153,10 +169,13 @@ export default function ProfilePage() {
       await updateUserProfile(data)
       const updated = await getUserProfile()
       setUserProfile(updated)
+      populateForm(updated)  // v0.1.7+: 刷新 form state (保证 UI 看到最新值)
       await loadProfileView()  // 刷新"AI 怎么理解我"
-      alert('保存成功！')
+      // v0.1.7+: 用 toast 替代 alert (alert 在某些浏览器被阻止, 不友好)
+      setSaveMsg({ type: 'ok', text: '保存成功' })
+      setTimeout(() => setSaveMsg(null), 2000)
     } catch (e: any) {
-      alert('保存失败: ' + e.message)
+      setSaveMsg({ type: 'err', text: '保存失败: ' + (e?.message || '?') })
     } finally {
       setSaving(false)
     }
@@ -199,7 +218,7 @@ export default function ProfilePage() {
             <div className="px-4 pb-4 border-t border-purple-200">
               {profileView.derived_rules.length > 0 ? (
                 <div className="mt-3">
-                  <div className="text-xs font-semibold text-purple-700 mb-1">📌 注入指令</div>
+                  <div className="text-xs font-semibold text-purple-700 mb-1">注入指令</div>
                   <ul className="space-y-1 text-sm text-gray-700">
                     {profileView.derived_rules.map((r, i) => (
                       <li key={i} className="flex items-start gap-2">
@@ -259,7 +278,6 @@ export default function ProfilePage() {
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <div className="text-lg">{s.icon}</div>
                     <div className="mt-1">{s.label}</div>
                   </button>
                 ))}
@@ -359,6 +377,15 @@ export default function ProfilePage() {
               <Save size={18} />
               {saving ? '保存中...' : '保存信息'}
             </button>
+            {/* v0.1.7+: 保存结果 toast (替代 alert) */}
+            {saveMsg && (
+              <div className={`mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${
+                saveMsg.type === 'ok' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+              }`}>
+                {saveMsg.type === 'ok' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                <span>{saveMsg.text}</span>
+              </div>
+            )}
           </div>
 
           {/* v0.1.7: Agent 人格选择 (v0.9.1 plan 中"预留"的多角色实际接入) */}

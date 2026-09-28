@@ -1026,7 +1026,7 @@ export default function ResourcesPage() {
                 <div className="font-medium">建议下一步:</div>
                 <div>1. 优先攻克排名 1-3 的薄弱知识点 (点击右侧"查看"跳到列表)</div>
                 <div>2. 让 Agent 帮你安排学习计划: 答疑 tab 点 "帮我安排学习计划"</div>
-                <div>3. 每天复习 1-2 个, 错题掌握后勾选 ✓ (掌握度)</div>
+                <div>3. 每天复习 1-2 个, 错题掌握后勾选 (掌握度)</div>
               </div>
             </div>
 

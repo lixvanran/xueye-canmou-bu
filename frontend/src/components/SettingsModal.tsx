@@ -223,7 +223,7 @@ function ApiKeyTab({ onKeyUpdated }: { onKeyUpdated: () => void }) {
     setTestResult(null)
     try {
       const r = await api.post<{ success: boolean; message: string; prefix: string }>('/settings/api-key', { api_key: key })
-      setMsg({ type: 'ok', text: `✓ ${r.data.message}` })
+      setMsg({ type: 'ok', text: `${r.data.message}` })
       setKeyInput('')
       setShowKey(false)
       loadStatus()
@@ -249,9 +249,9 @@ function ApiKeyTab({ onKeyUpdated }: { onKeyUpdated: () => void }) {
       const r = await api.post<any>('/settings/api-key/test', { api_key: key })
       setTestResult(r.data)
       if (r.data.ok) {
-        setMsg({ type: 'ok', text: '✓ Key 有效 (OpenRouter 认证通过)' })
+        setMsg({ type: 'ok', text: 'Key 有效 (OpenRouter 认证通过)' })
       } else {
-        setMsg({ type: 'err', text: `✗ Key 无效: ${r.data.error || '?'}` })
+        setMsg({ type: 'err', text: `Key 无效: ${r.data.error || '?'}` })
       }
     } catch (e: any) {
       const detail = e?.response?.data?.detail || e?.message || '?'
@@ -266,7 +266,7 @@ function ApiKeyTab({ onKeyUpdated }: { onKeyUpdated: () => void }) {
     setLoading(true)
     try {
       await api.delete('/settings/api-key')
-      setMsg({ type: 'ok', text: '✓ Key 已清空 (需重启服务生效)' })
+      setMsg({ type: 'ok', text: 'Key 已清空 (需重启服务生效)' })
       loadStatus()
     } catch (e: any) {
       setMsg({ type: 'err', text: '清空失败: ' + (e?.message || '?') })
@@ -390,16 +390,16 @@ function ApiKeyTab({ onKeyUpdated }: { onKeyUpdated: () => void }) {
             <CheckCircle2 size={14} /> OpenRouter 账户信息
           </div>
           {testResult.email && (
-            <div className="text-gray-700">📧 邮箱: <span className="font-mono">{testResult.email}</span></div>
+            <div className="text-gray-700">邮箱: <span className="font-mono">{testResult.email}</span></div>
           )}
           {testResult.is_free_tier !== undefined && (
             <div className="text-gray-700">
-              🎁 套餐: {testResult.is_free_tier ? '免费档' : '付费档'}
+              套餐: {testResult.is_free_tier ? '免费档' : '付费档'}
             </div>
           )}
           {testResult.limit !== null && (
             <div className="text-gray-700">
-              💰 总额度: ${testResult.limit?.toFixed(2) || '0'} | 剩余: ${testResult.limit_remaining?.toFixed(2) || '0'} | 已用: ${testResult.usage?.toFixed(2) || '0'}
+              总额度: ${testResult.limit?.toFixed(2) || '0'} | 剩余: ${testResult.limit_remaining?.toFixed(2) || '0'} | 已用: ${testResult.usage?.toFixed(2) || '0'}
             </div>
           )}
         </div>
@@ -407,7 +407,7 @@ function ApiKeyTab({ onKeyUpdated }: { onKeyUpdated: () => void }) {
 
       {/* 流程说明 */}
       <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 space-y-1">
-        <div className="font-medium text-gray-700">📋 使用流程</div>
+        <div className="font-medium text-gray-700">使用流程</div>
         <div>1. 申请 OpenRouter Key (上面链接)</div>
         <div>2. 在输入框粘贴 → 点「测试 Key」验证 → 看账户信息</div>
         <div>3. 点「保存到 .env」写入 <span className="font-mono">backend/.env</span></div>
@@ -929,7 +929,7 @@ function ApiStatusTab() {
         )}
         <div className="flex-1">
           <div className="font-semibold">
-            {result.llm_test?.ok ? '✓ OpenRouter key 有效' : '✗ key 验证失败'}
+            {result.llm_test?.ok ? 'OpenRouter key 有效' : 'key 验证失败'}
           </div>
           {result.llm_test?.message && (
             <div className="text-sm text-zinc-600 mt-1">{result.llm_test.message}</div>
@@ -1052,7 +1052,7 @@ function ModelSettingsTab() {
     setMsg(null)
     try {
       await api.put('/settings/models', selection)
-      setMsg('✓ 已保存, 下次对话生效')
+      setMsg('已保存, 下次对话生效')
       setTimeout(() => setMsg(null), 3000)
     } catch (e: any) {
       const errMsg = e?.response?.data?.detail || e?.message || '保存失败'
@@ -1079,7 +1079,7 @@ function ModelSettingsTab() {
   return (
     <div className="space-y-5">
       <div className="text-sm text-zinc-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
-        💡 从每档白名单里选一个模型。<br />
+        从每档白名单里选一个模型。<br />
         严格白名单: 只能调用下列模型, 不会乱跑别的。<br />
         默认: low=minimaxM2.7, medium/high=minimaxM3
       </div>
@@ -1253,7 +1253,7 @@ function UsageTab() {
       )}
 
       <div className="text-xs text-zinc-500">
-        💡 数据来自 OpenRouter <code className="px-1 bg-zinc-100 rounded">/api/v1/auth/key</code>, 不消耗 token。
+        数据来自 OpenRouter <code className="px-1 bg-zinc-100 rounded">/api/v1/auth/key</code>, 不消耗 token。
       </div>
 
       <button
