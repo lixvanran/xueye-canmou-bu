@@ -1,4 +1,4 @@
-# LocalAgent v0.1.7
+# LocalAgent v1.1.9
 
 **本地化 AI Agent 平台** — 多智能体协作 + RAG 知识库 + 工具调用。
 
@@ -60,7 +60,7 @@
 - **Node.js 20+** （同上）
 - Windows 10/11 或 macOS / Linux
 
-> v0.1.7+：Windows 用户如果机器上 Python / Node 都没装，启动.bat 会**自动用 winget 装**（用户级安装，不用管理员权限）。装完需要重新跑一次 启动.bat（Windows 已知 PATH 刷新问题）。macOS / Linux 用户请用 brew / apt 手动装。
+> v1.1.9+: Windows 用户如果机器上 Python / Node 都没装，启动.bat 会**自动用 winget 装**（用户级安装，不用管理员权限）。装完需要重新跑一次 启动.bat（Windows 已知 PATH 刷新问题）。macOS / Linux 用户请用 brew / apt 手动装。
 
 ### 启动方式
 
@@ -182,7 +182,7 @@ LocalAgent/
 
 ## 版本说明
 
-当前版本 v0.1.7。开发采用迭代式小版本演进，每个版本聚焦一个改进点。
+当前版本 v1.1.9。开发采用迭代式小版本演进，每个版本聚焦一个改进点。
 
 已知版本演进：
 

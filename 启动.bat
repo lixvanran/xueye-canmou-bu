@@ -1,6 +1,6 @@
 @echo off
 REM ===========================================
-REM   LocalAgent v0.1.7 - One-Click Launcher
+REM   LocalAgent v1.1.9 - One-Click Launcher
 REM   PURE ASCII — no Chinese chars in this file.
 REM   Why: cmd.exe default codepage is GBK on Chinese Windows;
 REM         if this file is saved as UTF-8 (no BOM), every Chinese
@@ -8,7 +8,7 @@ REM         char / goto label / echo gets mangled -> script breaks.
 REM   Workaround: use powershell for ALL Chinese output, and keep
 REM         batch labels ASCII.
 REM
-REM   v0.1.7+: auto-install Python / Node via winget if missing
+REM   v1.1.9+: auto-install Python / Node via winget if missing
 REM            (Win10 1809+ / Win11; user-scope)
 REM ===========================================
 
@@ -19,7 +19,7 @@ set "PSMSG=powershell -NoProfile -Command "Write-Host""
 
 echo.
 echo ============================================================
-echo   LocalAgent v0.1.7  (local AI Agent platform)
+echo   LocalAgent v1.1.9  (local AI Agent platform)
 echo ============================================================
 echo.
 

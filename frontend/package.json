@@ -2,7 +2,7 @@
   "name": "localagent-frontend",
   "productName": "LocalAgent",
   "private": true,
-  "version": "0.1.7",
+  "version": "1.1.9",
   "description": "LocalAgent - 本地化 AI Agent 平台 (参赛 v0.1.7)",
   "author": "Mavis",
   "main": "electron/main.cjs",
