@@ -1,4 +1,10 @@
-# LocalAgent v1.1.9
+# 学习智囊团 v1.1.9
+
+> **Fork 声明**：本项目是 [ZhangXuefeng-Agent](https://github.com/lixvanran/ZhangXuefeng-Agent) 的 fork。  
+> 分叉点：`v0.9.8`（commit `fdfd1ee`）。  
+> - **`upstream` 分支** = ZhangXuefeng-Agent 原项目（含 `v0.9.8` 及之前的所有历史）  
+> - **`main` 分支** = 学习智囊团（`v0.9.8` 之后的所有开发，包括 v0.9.9 → v1.1.5 → v2.0 → v0.1.6 → v0.1.7 → v1.1.9）  
+
 
 **本地化 AI Agent 平台** — 多智能体协作 + RAG 知识库 + 工具调用。
 

@@ -19,7 +19,7 @@ set "PSMSG=powershell -NoProfile -Command "Write-Host""
 
 echo.
 echo ============================================================
-echo   LocalAgent v1.1.9  (local AI Agent platform)
+echo   学习智囊团 v1.1.9  (本地化 AI Agent 平台) - 张雪峰Agent fork
 echo ============================================================
 echo.
 
