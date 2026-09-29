@@ -6,7 +6,7 @@ from app.agent.tools._loader import load_db, load_kb
 
 
 async def analyze_major(major_name: str) -> Dict:
-    """深度分析专业 (就业/薪资/张老师点评) — 接 db/majors.json + 03_majors.json"""
+    """深度分析专业 (就业/薪资/张雪峰点评) — 接 db/majors.json + 03_majors.json"""
     # 1. db 大数据
     db_majors = load_db("majors.json")
     found_db = None
@@ -15,7 +15,7 @@ async def analyze_major(major_name: str) -> Dict:
             found_db = m
             break
 
-    # 2. KB (张老师点评)
+    # 2. KB (张雪峰点评)
     kb_majors = load_kb("03_majors.json")
     found_kb = None
     for m in kb_majors:
@@ -44,5 +44,5 @@ async def analyze_major(major_name: str) -> Dict:
         "description": (found_db or {}).get("description"),
         "teacher_comment": (found_kb or {}).get("comment"),
         "warning": (found_kb or {}).get("warning"),
-        "data_source": "db/majors.json (585个) + KB 03_majors.json (张老师点评)",
+        "data_source": "db/majors.json (585个) + KB 03_majors.json (张雪峰点评)",
     }

@@ -1,7 +1,7 @@
 /**
  * useAgentName - 全局 Agent 称呼 (v2.0)
  *
- * - 默认 "张老师"
+ * - 默认 "张雪峰"
  * - 启动时从 /api/user/profile 读取 profile.agent_name
  * - 暴露 [name, setName] 给 UI 绑定
  * - setName: 写到 localStorage 立刻生效 (UI 同步), 并异步 PUT /api/user/profile
@@ -12,7 +12,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { getUserProfile, updateUserProfile } from '@/api'
 
 const STORAGE_KEY = 'agent_name'
-const DEFAULT_NAME = '张老师'
+const DEFAULT_NAME = '张雪峰'
 
 function readLocal(): string {
   try {

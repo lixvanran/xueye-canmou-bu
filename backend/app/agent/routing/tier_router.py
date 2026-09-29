@@ -187,11 +187,17 @@ class TierRouter:
         history: Optional[list] = None,
         deep_thinking: bool = False,
         force_tier: Optional[str] = None,
+        tier_mode: str = "normal",  # v0.1.7+: 快速 / 常规 / 高级 三档
     ) -> dict:
         """一步到位: 分类 + 选模型
 
         v0.9.5: 第一次调用时从 DB 读用户偏好 (避免 __init__ 时 DB 还没建好的时序问题)
         v0.9.3: 每次重新读 DB (用户改设置立刻生效)
+
+        v0.1.7+: tier_mode 模式
+        - speed: 跳过 classifier, 强制 low tier (但 Agent 仍可调工具)
+        - normal: 正常 classifier + 不允许 high tier (cap to medium)
+        - advanced: 正常 classifier + 允许 high tier
         """
         # 第一次调用时尝试从 DB 加载
         if self.tiers["low"].primary == DEFAULT_TIER_MODELS["low"]:
@@ -200,6 +206,21 @@ class TierRouter:
                 self.tiers = _load_tiers_from_db()
             except Exception as e:
                 logger.debug(f"DB load skipped: {e}")
+
+        # v0.1.7+: speed 模式 — 跳过 classifier, 直接 low tier
+        if tier_mode == "speed":
+            tier = self.get_tier("low")
+            return {
+                "complexity": "low",
+                "primary_model": tier.primary,
+                "fallback_models": tier.fallback,
+                "tier_info": tier,
+                "classification": ClassificationResult(
+                    complexity="low", category="speed_mode", confidence=1.0,
+                    reason="快速模式: 跳过分级路由, 直接用 low 模型 (但 Agent 仍可调工具)",
+                    model_used="forced_speed", fallback=False,
+                ),
+            }
 
         # 强制档位 (调试用)
         if force_tier and self.allow_force_tier:
@@ -239,8 +260,12 @@ class TierRouter:
         # v0.9.8: 改 — classifier 分 high 时, **仍然用 high tier** (只是不显示 reasoning)
         # 之前降级 medium 会让好问题用便宜模型, 体验更差
         # deep_thinking 只是 "额外显示 thinking" 开关, 不应影响主模型选择
+        # v0.1.7+: tier_mode=normal 时, cap 到 medium (不允许 high)
         target_complexity = task_complexity
-        if target_complexity == "high" and not deep_thinking:
+        if tier_mode == "normal" and target_complexity == "high":
+            target_complexity = "medium"
+            reason_suffix = " [常规模式: cap 到 medium, 不允许 high]"
+        elif target_complexity == "high" and not deep_thinking:
             reason_suffix = " [high 模型; 深度思考未开, 不显示 reasoning]"
         elif deep_thinking and target_complexity in ("low", "medium"):
             reason_suffix = ""

@@ -90,7 +90,7 @@ const TABS: TabConfig[] = [
 // 来源: nuwa-skill 蒸馏 13 人物 + 1 主题 (github.com/alchaincyf, MIT) + 自蒸馏 xuejie / duanzishou
 type PersonaEntry = { value: string; label: string; desc: string }
 const PERSONAS: PersonaEntry[] = [
-  { value: 'teacher_zhang', label: '张老师',  desc: 'nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 启发' },
+  { value: 'teacher_zhang', label: '张雪峰',  desc: 'nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 启发' },
   { value: 'xuejie',        label: '学姐',    desc: '串行复利 · 适合答疑陪伴' },
   { value: 'duanzishou',    label: '段子手',  desc: '第一性原理 + 段子 · 适合闲聊' },
   { value: 'jobs',          label: '乔布斯',  desc: '专注=说不 · 产品/设计/战略' },
@@ -201,6 +201,9 @@ export default function ChatPage() {
   // persona 状态 (仅 chitchat 有效)
   const [persona, setPersona] = useState<string>('teacher_zhang')
   const [personaLoading, setPersonaLoading] = useState(false)
+
+  // v0.1.7+: 分级模式 — speed / normal / advanced
+  const [tierMode, setTierMode] = useState<'speed' | 'normal' | 'advanced'>('normal')
   const [personaMsg, setPersonaMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [personaOpen, setPersonaOpen] = useState(false)
   const personaMenuRef = useRef<HTMLDivElement>(null)
@@ -436,12 +439,17 @@ export default function ChatPage() {
           conversation_id: currentConvId ?? undefined,
           user_id: 1,
           stream: true,
+          tier_mode: tierMode,  // v0.1.7+: 分级模式
         },
         ctrl.signal,
       )) {
         switch (ev.type) {
           case 'start':
             trace.start = ev.data
+            // v0.1.7+ 上下文记忆: 把后端创建的 conv_id 存到当前 tab
+            if (ev.data?.conv_id) {
+              setConvIds(prev => ({ ...prev, [activeTab]: ev.data.conv_id }))
+            }
             updateTrace()
             break
           case 'ctx':
@@ -1023,7 +1031,8 @@ export default function ChatPage() {
       {/* 主区 */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl mx-auto">
-          {/* 当前 tab 描述 */}
+          {/* 当前 tab 描述 — v0.1.7+: 用户发了消息后隐藏, 不然聊天区显得挤 */}
+          {messages.length === 0 && (
           <div className={`rounded-2xl border p-5 mb-5 ${tabConfig.bg}`}>
             <div className="flex items-center gap-2 mb-1">
               <tabConfig.icon size={18} className={tabConfig.color} />
@@ -1036,11 +1045,13 @@ export default function ChatPage() {
               </div>
             )}
           </div>
+          )}
 
           {/* v2.0: 答疑 tab 专属快捷按钮 — 从错题本选题 + 分析薄弱点 + 安排学习计划 */}
-          {activeTab === 'qa' && (
+          {/* v0.1.7+: 只在 messages.length === 0 时显示 (避免消息发了还在) */}
+          {activeTab === 'qa' && messages.length === 0 && (
             <>
-              <div className="mb-4 grid grid-cols-3 gap-3">
+              <div className="mb-4 grid grid-cols-3 gap-3 max-w-3xl">
                 <button
                   onClick={openMistakePicker}
                   className="flex items-center gap-3 px-4 py-3 bg-white border border-blue-200 rounded-2xl text-sm hover:border-blue-400 hover:bg-blue-50 transition-all shadow-sm"
@@ -1454,6 +1465,36 @@ export default function ChatPage() {
               ))}
             </div>
           )}
+          {/* v0.1.7+: 分级模式选择 (快速 / 常规 / 高级) */}
+          {activeTab !== 'team' && (
+            <div className="mb-2 flex items-center gap-1.5 text-xs">
+              <span className="text-zinc-400">分级</span>
+              {(['speed', 'normal', 'advanced'] as const).map(m => {
+                const cfg = {
+                  speed:    { l: '快速', d: '跳过 RAG + 跳过分级路由, low 模型 (Agent 仍可调工具)' },
+                  normal:   { l: '常规', d: '正常流程, 禁用 high 模型 (推荐)' },
+                  advanced: { l: '高级', d: '正常流程, 允许 high 模型' },
+                }[m]
+                const sel = tierMode === m
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setTierMode(m)}
+                    title={cfg.d}
+                    className={`px-2.5 py-1 rounded-full border transition-colors ${
+                      sel
+                        ? m === 'speed'   ? 'bg-amber-600 text-white border-amber-600'
+                        : m === 'normal'  ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50'
+                    }`}
+                  >
+                    {cfg.l}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           <div className="flex gap-2 items-end">
             {/* v0.1.7+: 上传按钮 — 替代手动拖入 workspace/uploads/ */}
             <input
@@ -1620,28 +1661,30 @@ function AgentTracePanel({ trace, liveTrace }: { trace: any; liveTrace: any }) {
 
       {expanded && (
         <div className="mt-2 bg-white border border-zinc-200 rounded-xl p-3 text-xs space-y-2 shadow-sm">
-          {/* 时间线 */}
-          <div className="flex flex-wrap gap-2">
+          {/* v0.1.7+: 时间线 — 8 个步骤分 4 列 2 行, 每格更宽 */}
+          <div className="grid grid-cols-4 gap-1.5">
             {steps.map((s) => {
               const Icon = s.icon
               const hasData = s.data !== null && s.data !== undefined && s.data !== ''
               const isOpen = expandedStep === s.key
               return (
-                <div key={s.key} className="flex-1 min-w-[120px]">
+                <div key={s.key}>
                   <button
                     onClick={() => setExpandedStep(isOpen ? null : s.key)}
                     disabled={!hasData}
-                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md border ${
+                    className={`w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md border ${
                       hasData
                         ? 'bg-white border-zinc-200 hover:border-zinc-400 cursor-pointer'
                         : 'bg-zinc-50 border-zinc-100 text-zinc-400 cursor-default'
                     }`}
                   >
-                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded ${s.color}`}>
-                      <Icon size={10} />
-                    </span>
-                    <span className="font-medium text-zinc-700">{s.label}</span>
-                    {s.sub && <span className="text-zinc-500 text-[10px] truncate">{s.sub}</span>}
+                    <div className="flex items-center gap-1.5 w-full">
+                      <span className={`inline-flex items-center justify-center w-5 h-5 rounded flex-shrink-0 ${s.color}`}>
+                        <Icon size={10} />
+                      </span>
+                      <span className="font-medium text-zinc-700 truncate flex-1 text-left">{s.label}</span>
+                    </div>
+                    {s.sub && <span className="text-zinc-500 text-[10px] truncate w-full text-left pl-6.5">{s.sub}</span>}
                   </button>
                   {isOpen && hasData && (
                     s.key === 'tools' ? (

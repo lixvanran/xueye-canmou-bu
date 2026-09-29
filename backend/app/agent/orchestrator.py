@@ -38,6 +38,7 @@ class AgentOrchestrator:
         history: list,
         deep_thinking: bool,
         force_tier: Optional[str] = None,
+        tier_mode: str = "normal",  # v0.1.7+: 快速 / 常规 / 高级
     ) -> dict:
         """评估复杂度 + 选模型 (走 routing 模块)
         Returns: {
@@ -50,6 +51,7 @@ class AgentOrchestrator:
             history=history,
             deep_thinking=deep_thinking,
             force_tier=force_tier,
+            tier_mode=tier_mode,
         )
 
     # ==================== 非流式 ====================
@@ -63,6 +65,7 @@ class AgentOrchestrator:
         web_search_enabled: bool = None,
         deep_thinking_enabled: bool = None,
         force_tier: Optional[str] = None,
+        tier_mode: str = "normal",  # v0.1.7+: 快速 / 常规 / 高级
     ) -> Dict:
         """非流式处理"""
         conv_id = self.memory.get_or_create_conversation(user_id, scenario, conversation_id)
@@ -79,6 +82,7 @@ class AgentOrchestrator:
             web_search_enabled=web_search_enabled,
             deep_thinking_enabled=deep_thinking_enabled,
             tracer=tracer,
+            tier_mode=tier_mode,
         )
 
         # 2) 路由选模型 (走 routing 模块)
@@ -87,6 +91,7 @@ class AgentOrchestrator:
             history=ctx["messages"][1:],
             deep_thinking=bool(ctx["dt_on"]),
             force_tier=force_tier,
+            tier_mode=tier_mode,
         )
         cls_info = route.get("classification")
         logger.info(
@@ -155,6 +160,7 @@ class AgentOrchestrator:
         web_search_enabled: bool = None,
         deep_thinking_enabled: bool = None,
         force_tier: Optional[str] = None,
+        tier_mode: str = "normal",  # v0.1.7+: 快速 / 常规 / 高级
         stop_event: Optional[asyncio.Event] = None,
     ) -> AsyncGenerator[str, None]:
         """流式处理 - SSE 增量输出
@@ -180,6 +186,7 @@ class AgentOrchestrator:
             web_search_enabled=web_search_enabled,
             deep_thinking_enabled=deep_thinking_enabled,
             tracer=tracer,
+            tier_mode=tier_mode,
         )
         ctx_latency_ms = round((_time.time() - t0) * 1000, 2)
 
@@ -190,6 +197,7 @@ class AgentOrchestrator:
             history=ctx["messages"][1:],
             deep_thinking=bool(ctx["dt_on"]),
             force_tier=force_tier,
+            tier_mode=tier_mode,
         )
         route_latency_ms = round((_time.time() - t0) * 1000, 2)
         cls_info = route.get("classification")

@@ -151,7 +151,7 @@ export default function ResourcesPage() {
       const result = await createResource(formData)
       // v2.0: 后端回传了 LLM 自动打的 tags, 提示用户
       const autoTags = result.knowledge_tags?.length ? `, 已自动打标签: ${result.knowledge_tags.join(', ')}` : ''
-      alert(`Created ${result.code}! 张老师现在能读到它了${autoTags}`)
+      alert(`Created ${result.code}! 张雪峰现在能读到它了${autoTags}`)
       setShowUpload(false)
       setForm({
         title: '', content: '', subject: '数学', knowledge_point: '', error_type: 'concept',
@@ -169,7 +169,7 @@ export default function ResourcesPage() {
   /**
    * v2.0: 合并的"题目讲解"按钮 — 调 POST /api/workspace/mistakes/{id}/explain
    * 一次返回讲题 (4 步) + 标准答案, 流式
-   * 完全替代了之前的"张老师讲题"+"一键生成标答"两个按钮
+   * 完全替代了之前的"张雪峰讲题"+"一键生成标答"两个按钮
    */
   const handleExplain = async () => {
     if (!selected) return
@@ -286,7 +286,7 @@ export default function ResourcesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">资料库</h1>
-          <p className="text-sm text-gray-500 mt-1">错题 + 学习资料 · 张老师会读取它们来帮你</p>
+          <p className="text-sm text-gray-500 mt-1">错题 + 学习资料 · 张雪峰会读取它们来帮你</p>
         </div>
         <div className="flex gap-2">
           {/* v0.1.6: 一键整理 — 调 weak-topics 自动分析薄弱点 */}
@@ -649,7 +649,7 @@ export default function ResourcesPage() {
               </div>
 
               <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-xs text-yellow-700">
-                保存后会生成编号（如 M-001），聊天时说"看 M-001"张老师就能找到
+                保存后会生成编号（如 M-001），聊天时说"看 M-001"张雪峰就能找到
               </div>
             </div>
 
@@ -871,7 +871,7 @@ export default function ResourcesPage() {
               </div>
             )}
 
-            {/* v2.0: 合并的"题目讲解"面板 — 替代旧的"张老师讲题"+"一键生成标答"两个按钮 */}
+            {/* v2.0: 合并的"题目讲解"面板 — 替代旧的"张雪峰讲题"+"一键生成标答"两个按钮 */}
             {selected.type === 'mistake' && !editing && (
               <div className="mt-4 pt-4 border-t">
                 <div className="flex items-center gap-2 mb-3">
@@ -896,7 +896,7 @@ export default function ResourcesPage() {
                       停止
                     </button>
                   )}
-                  {/* 老按钮已删除 — 旧版本有两个按钮: "张老师讲题" + "一键生成标答", 现合并为 1 个 */}
+                  {/* 老按钮已删除 — 旧版本有两个按钮: "张雪峰讲题" + "一键生成标答", 现合并为 1 个 */}
                 </div>
 
                 {aiError && (
@@ -910,7 +910,7 @@ export default function ResourcesPage() {
                   <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4 mb-3">
                     <div className="flex items-center gap-2 mb-2">
                       <UserCircle2 size={14} className="text-purple-600" />
-                      <span className="text-sm font-semibold text-gray-700">张老师讲题</span>
+                      <span className="text-sm font-semibold text-gray-700">张雪峰讲题</span>
                     </div>
                     <div className="markdown-body text-sm text-gray-800 whitespace-pre-wrap">
                       {aiStepContent}

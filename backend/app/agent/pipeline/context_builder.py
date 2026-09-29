@@ -49,7 +49,7 @@ def _build_profile_injection(user_profile: dict) -> str:
     规则:
     - stage=='初中': 用初中方法, 不引入高中公式
     - language=='英文': 回复以英文为主
-    - agent_name 非默认 ('张老师'): 改称谓
+    - agent_name 非默认 ('张雪峰'): 改称谓
     - persona: 注入对应人格 prompt (teacher_zhang/xuejie/duanzishou)
     - 调用方负责 skip scenario='volunteer' (其 persona 已自带张雪峰风格)
     """
@@ -87,13 +87,13 @@ def _build_profile_injection(user_profile: dict) -> str:
         blocks.append("中英双语都可以, 根据用户语言自然切换")
 
     agent_name = (user_profile.get("agent_name") or "").strip()
-    if agent_name and agent_name != "张老师":
+    if agent_name and agent_name != "张雪峰":
         blocks.append(
-            f"你叫 {agent_name}, 不要自称'张老师'或'老张'等默认称呼"
+            f"你叫 {agent_name}, 不要自称'张雪峰'或'老张'等默认称呼"
         )
 
     # v0.1.7: persona 已在 _render_base(persona) 里生效 (BASE_PERSONA → PERSONA_TEMPLATES 切换)
-    # 之前这里追加 persona 块的方法无效, 因为 BASE_PERSONA 的 "你是张老师" 在前面覆盖了
+    # 之前这里追加 persona 块的方法无效, 因为 BASE_PERSONA 的 "你是张雪峰" 在前面覆盖了
     # 现在 base 本身已经按 persona 切换, 这里不再追加
 
     if not blocks:
@@ -111,6 +111,7 @@ async def build_messages(
     deep_thinking_enabled: Optional[bool] = None,
     include_image: bool = False,
     tracer = None,  # v0.1: RAG tracer
+    tier_mode: str = "normal",  # v0.1.7+: 快速 / 常规 / 高级
 ) -> Dict:
     """拼装完整 messages + RAG 摘要
     Returns: {
@@ -133,13 +134,26 @@ async def build_messages(
             {"history_count": len(history), "facts_count": len(user_facts)})
 
     # 2) RAG (with tracer)
-    if tracer:
-        tracer.add_stage("init", f"user_id={user_id}, scenario={scenario}",
-            "starting RAG pipeline", {"user_id": user_id, "scenario": scenario})
-    user_resources = rag_engine.search_user_resources(user_message, user_id, top_k=3, tracer=tracer)
-    kb_results = rag_engine.search_knowledge_base(user_message, top_k=5, tracer=tracer)
-    rag_context = rag_engine.build_context(user_resources, kb_results, tracer=tracer)
-    rag_summary = _summarize_rag(user_resources, kb_results)
+    # v0.1.7+: RAG 启用条件 — scenario=volunteer AND tier_mode != speed
+    #   快速模式 (speed) 跳过 RAG, 节省 embedding 配额
+    #   其他场景 (chat/exam/chitchat) 都不调用
+    user_resources: list = []
+    kb_results: list = []
+    rag_context = ""
+    rag_enabled = (scenario == "volunteer" and tier_mode != "speed")
+    if not rag_enabled:
+        reason = f"scenario={scenario}" if scenario != "volunteer" else f"tier_mode={tier_mode}"
+        rag_summary = {"enabled": False, "reason": reason}
+    else:
+        rag_summary = {"enabled": True, "reason": "scenario=volunteer, tier_mode != speed"}
+    if rag_enabled:
+        if tracer:
+            tracer.add_stage("init", f"user_id={user_id}, scenario={scenario}",
+                "starting RAG pipeline (volunteer scenario)", {"user_id": user_id, "scenario": scenario})
+        user_resources = rag_engine.search_user_resources(user_message, user_id, top_k=3, tracer=tracer)
+        kb_results = rag_engine.search_knowledge_base(user_message, top_k=5, tracer=tracer)
+        rag_context = rag_engine.build_context(user_resources, kb_results, tracer=tracer)
+        rag_summary = _summarize_rag(user_resources, kb_results)
     if tracer:
         tracer.finish({
             "user_resources_count": len(user_resources),

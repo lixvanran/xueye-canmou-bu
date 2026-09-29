@@ -47,6 +47,7 @@ async def chat(request: ChatRequest, fastapi_request: Request, db: Session = Dep
                     web_search_enabled=request.web_search_enabled,
                     deep_thinking_enabled=request.deep_thinking_enabled,
                     force_tier=effective_force_tier,
+                    tier_mode=request.tier_mode,
                     stop_event=stop_event,
                 ):
                     # 额外保险: yield 之间也 check

@@ -9,6 +9,7 @@ export interface ChatParams {
   stream?: boolean
   web_search_enabled?: boolean
   deep_thinking_enabled?: boolean
+  tier_mode?: 'speed' | 'normal' | 'advanced'  // v0.1.7+: 分级模式
 }
 
 export type StreamEventType =

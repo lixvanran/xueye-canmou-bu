@@ -236,7 +236,7 @@ def get_user_profile(db: Session, user_id: int) -> Dict:
             "stage": "高中",
             "direction": "",
             "language": "中文",
-            "agent_name": "张老师",
+            "agent_name": "张雪峰",
         }
     return {
         "id": user.id,
@@ -246,7 +246,7 @@ def get_user_profile(db: Session, user_id: int) -> Dict:
         "stage": getattr(user, "stage", "高中") or "高中",
         "direction": getattr(user, "direction", "") or "",
         "language": getattr(user, "language", "中文") or "中文",
-        "agent_name": getattr(user, "agent_name", "张老师") or "张老师",
+        "agent_name": getattr(user, "agent_name", "张雪峰") or "张雪峰",
         "province": user.province,
         "score": user.score,
         "rank": user.rank,

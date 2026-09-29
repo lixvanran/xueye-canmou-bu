@@ -436,7 +436,7 @@ function AgentSettingsTab() {
     try {
       await setAgentName(agentNameInput)
       await reloadAgentName()
-      setAgentNameMsg({ type: 'ok', text: `已保存: ${agentNameInput.trim() || '张老师'} (侧边栏 + 主页 + Agent 自我介绍都会用这个)` })
+      setAgentNameMsg({ type: 'ok', text: `已保存: ${agentNameInput.trim() || '张雪峰'} (侧边栏 + 主页 + Agent 自我介绍都会用这个)` })
       setTimeout(() => setAgentNameMsg(null), 3000)
     } catch (e: any) {
       const detail = e?.response?.data?.detail || e?.message || '保存失败'
@@ -460,7 +460,7 @@ function AgentSettingsTab() {
             type="text"
             value={agentNameInput}
             onChange={(e) => setAgentNameInput(e.target.value)}
-            placeholder="张老师"
+            placeholder="张雪峰"
             className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
             disabled={agentNameSaving}
             onKeyDown={(e) => { if (e.key === 'Enter') handleSaveAgentName() }}

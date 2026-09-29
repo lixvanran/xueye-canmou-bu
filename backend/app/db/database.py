@@ -27,8 +27,8 @@ class UserORM(Base):
     direction = Column(String(32), default="")
     # 语言偏好: [中文/英文/双语]
     language = Column(String(16), default="中文")
-    # Agent 称呼 (替代硬编码"张老师"). 默认 "张老师" 保持向后兼容
-    agent_name = Column(String(64), default="张老师")
+    # Agent 称呼 (替代硬编码"张雪峰"). 默认 "张雪峰" 保持向后兼容
+    agent_name = Column(String(64), default="张雪峰")
     # v0.1.7: Agent 人格 (teacher_zhang / xuejie / duanzishou 等) — 实际生效到 system prompt
     persona = Column(String(32), default="teacher_zhang")
 
@@ -320,7 +320,7 @@ def _migrate_profile_fields(engine):
         'stage':       ('VARCHAR(32)', "'高中'"),
         'direction':   ('VARCHAR(32)', "''"),
         'language':    ('VARCHAR(16)', "'中文'"),
-        'agent_name':  ('VARCHAR(64)', "'张老师'"),
+        'agent_name':  ('VARCHAR(64)', "'张雪峰'"),
         # v0.1.7: 人格 (实际生效到 system prompt)
         'persona':     ('VARCHAR(32)', "'teacher_zhang'"),
         # 老字段保留 (向后兼容), 不主动建. 注释里说明
@@ -388,7 +388,7 @@ def _seed_demo():
                 stage="高中",
                 direction="学业",
                 language="中文",
-                agent_name="张老师",
+                agent_name="张雪峰",
                 province="",
                 score=None,
                 rank=None,

@@ -51,7 +51,7 @@ class ProfileUpdate(BaseModel):
 #   - target_major     目标专业
 #   - interest         兴趣方向 (文本)
 #   - notes            备注
-#   - agent_name       Agent 称呼 (替代硬编码 "张老师")
+#   - agent_name       Agent 称呼 (替代硬编码 "张雪峰")
 #
 # 内部字段 (前端表单不展示, 但保留兼容):
 #   - education_stage  /  province / score / rank / target (旧版字段)
@@ -101,7 +101,7 @@ async def update_profile(
         user.interests = payload.interest or None
     if payload.agent_name is not None:
         # 核心修复目标 — 前端 PUT body 现在能正确保存
-        user.agent_name = payload.agent_name or "张老师"
+        user.agent_name = payload.agent_name or "张雪峰"
     if payload.persona is not None:
         # v0.1.7: 切换 Agent 人格 (实际生效到 system prompt)
         # 允许值: teacher_zhang / xuejie / duanzishou / custom
@@ -111,7 +111,7 @@ async def update_profile(
         # 用户明确设过 (如 '小张' '李老师'), 不覆盖
         all_defaults = set(PERSONA_DEFAULT_AGENT_NAME.values())
         if payload.agent_name is None and (not user.agent_name or user.agent_name in all_defaults):
-            user.agent_name = PERSONA_DEFAULT_AGENT_NAME.get(new_persona, "张老师")
+            user.agent_name = PERSONA_DEFAULT_AGENT_NAME.get(new_persona, "张雪峰")
         user.persona = new_persona
     if payload.direction is not None:
         user.direction = payload.direction or ""
@@ -187,7 +187,7 @@ def _serialize_profile(user: UserORM) -> dict:
         "target_major": "",
         "interest": user.interests or "",
         "notes": user.background or "",
-        "agent_name": user.agent_name or "张老师",
+        "agent_name": user.agent_name or "张雪峰",
         # v0.1.7: Agent 人格 (实际生效到 system prompt)
         "persona": getattr(user, "persona", None) or "teacher_zhang",
         # 配置字段
@@ -223,7 +223,7 @@ async def profile_view(user_id: int = 1, db: Session = Depends(get_db)):
 
     stage = user.stage or "高中"
     language = user.language or "中文"
-    agent_name = user.agent_name or "张老师"
+    agent_name = user.agent_name or "张雪峰"
     direction = user.direction or ""
 
     # 衍生指令 — 跟 context_builder 注入规则一致
@@ -238,8 +238,8 @@ async def profile_view(user_id: int = 1, db: Session = Depends(get_db)):
         derived_rules.append("回复以英文为主 (英文提问用英文, 中文提问可中英混排)")
     elif language == "双语":
         derived_rules.append("中英双语回复, 关键术语括注英文")
-    if agent_name and agent_name != "张老师":
-        derived_rules.append(f"你叫 {agent_name}, 不要自称张老师或张雪峰")
+    if agent_name and agent_name != "张雪峰":
+        derived_rules.append(f"你叫 {agent_name}, 不要自称'张雪峰'或'张老师'等默认称呼")
     if direction == "学业":
         derived_rules.append("用户目标方向是学业, 优先给应试 + 系统学习建议")
     elif direction == "兴趣":
@@ -276,22 +276,22 @@ async def profile_view(user_id: int = 1, db: Session = Depends(get_db)):
 # v0.1.7+ 扩充: nuwa-skill 蒸馏 13 人物 + 1 主题 + 自定义 2 个 = 16 个 persona
 # 来源: github.com/alchaincyf/nuwa-skill (MIT 协议) + 自蒸馏 xuejie / duanzishou
 AVAILABLE_PERSONAS = [
-    {"value": "teacher_zhang", "label": "张雪峰", "emoji": "🎓", "desc": "nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 决策启发", "source": "nuwa-skill", "scenario_fit": ["chat", "exam", "volunteer"]},
-    {"value": "xuejie",        "label": "学姐",   "emoji": "🌸", "desc": "自蒸馏 · 串行复利 · 适合答疑陪伴", "source": "self",      "scenario_fit": ["chat", "exam"]},
-    {"value": "duanzishou",    "label": "段子手", "emoji": "😂", "desc": "自蒸馏 · 第一性原理 + 段子 · 适合闲聊", "source": "self",      "scenario_fit": ["chitchat"]},
-    {"value": "jobs",          "label": "乔布斯", "emoji": "🍎", "desc": "nuwa-skill · 专注=说不 · 产品/设计/战略", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
-    {"value": "musk",          "label": "马斯克", "emoji": "🚀", "desc": "nuwa-skill · 第一性原理 · 工程/成本/删减", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
-    {"value": "munger",        "label": "芒格",   "emoji": "📊", "desc": "nuwa-skill · 反转思维 · 投资/多学科", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
-    {"value": "feynman",       "label": "费曼",   "emoji": "🔬", "desc": "nuwa-skill · 命名≠理解 · 学习/科学", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
-    {"value": "naval",         "label": "纳瓦尔", "emoji": "🧘", "desc": "nuwa-skill · 杠杆思维 · 财富/人生哲学", "source": "nuwa-skill", "scenario_fit": ["chat"]},
-    {"value": "zhang_yiming",  "label": "张一鸣", "emoji": "💡", "desc": "nuwa-skill · 延迟满足 · 产品/组织/全球化", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
-    {"value": "paul_graham",   "label": "Paul Graham", "emoji": "✍️", "desc": "nuwa-skill · 写作=思考 · 创业/YC", "source": "nuwa-skill", "scenario_fit": ["chat"]},
-    {"value": "karpathy",      "label": "Karpathy",   "emoji": "🤖", "desc": "nuwa-skill · Software X.0 · AI/工程", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
-    {"value": "ilya",          "label": "Ilya 苏茨克维","emoji": "🧠", "desc": "nuwa-skill · 压缩=理解 · AI 安全/研究", "source": "nuwa-skill", "scenario_fit": ["chat"]},
-    {"value": "mrbeast",       "label": "MrBeast",     "emoji": "🎬", "desc": "nuwa-skill · CTR × AVD · 内容/YouTube", "source": "nuwa-skill", "scenario_fit": ["chitchat"]},
-    {"value": "trump",         "label": "特朗普",     "emoji": "🏛️", "desc": "nuwa-skill · 一切都是交易 · 谈判/权力", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
-    {"value": "taleb",         "label": "塔勒布",     "emoji": "📚", "desc": "nuwa-skill · 反脆弱 · 风险/黑天鹅", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
-    {"value": "x_mastery",     "label": "X Mastery", "emoji": "𝕏", "desc": "nuwa-skill · 6 位创作者综合 · X/Twitter 运营", "source": "nuwa-skill", "scenario_fit": ["chitchat"]},
+    {"value": "teacher_zhang", "label": "张雪峰", "desc": "nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 决策启发", "source": "nuwa-skill", "scenario_fit": ["chat", "exam", "volunteer"]},
+    {"value": "xuejie",        "label": "学姐",   "desc": "自蒸馏 · 串行复利 · 适合答疑陪伴", "source": "self",      "scenario_fit": ["chat", "exam"]},
+    {"value": "duanzishou",    "label": "段子手", "desc": "自蒸馏 · 第一性原理 + 段子 · 适合闲聊", "source": "self",      "scenario_fit": ["chitchat"]},
+    {"value": "jobs",          "label": "乔布斯", "desc": "nuwa-skill · 专注=说不 · 产品/设计/战略", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "musk",          "label": "马斯克", "desc": "nuwa-skill · 第一性原理 · 工程/成本/删减", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "munger",        "label": "芒格",   "desc": "nuwa-skill · 反转思维 · 投资/多学科", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "feynman",       "label": "费曼",   "desc": "nuwa-skill · 命名≠理解 · 学习/科学", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "naval",         "label": "纳瓦尔", "desc": "nuwa-skill · 杠杆思维 · 财富/人生哲学", "source": "nuwa-skill", "scenario_fit": ["chat"]},
+    {"value": "zhang_yiming",  "label": "张一鸣", "desc": "nuwa-skill · 延迟满足 · 产品/组织/全球化", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "paul_graham",   "label": "Paul Graham", "desc": "nuwa-skill · 写作=思考 · 创业/YC", "source": "nuwa-skill", "scenario_fit": ["chat"]},
+    {"value": "karpathy",      "label": "Karpathy",   "desc": "nuwa-skill · Software X.0 · AI/工程", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "ilya",          "label": "Ilya 苏茨克维","desc": "nuwa-skill · 压缩=理解 · AI 安全/研究", "source": "nuwa-skill", "scenario_fit": ["chat"]},
+    {"value": "mrbeast",       "label": "MrBeast",     "desc": "nuwa-skill · CTR × AVD · 内容/YouTube", "source": "nuwa-skill", "scenario_fit": ["chitchat"]},
+    {"value": "trump",         "label": "特朗普",     "desc": "nuwa-skill · 一切都是交易 · 谈判/权力", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "taleb",         "label": "塔勒布",     "desc": "nuwa-skill · 反脆弱 · 风险/黑天鹅", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "x_mastery",     "label": "X Mastery", "desc": "nuwa-skill · 6 位创作者综合 · X/Twitter 运营", "source": "nuwa-skill", "scenario_fit": ["chitchat"]},
 ]
 
 
@@ -299,7 +299,7 @@ AVAILABLE_PERSONAS = [
 # (之前 user.agent_name='学姐' + user.persona='duanzishou' 同时存在 → LLM 双重人格)
 # v0.1.7+: 全 16 persona 联动默认 agent_name (跟 label 一致, 全中文)
 PERSONA_DEFAULT_AGENT_NAME = {
-    "teacher_zhang": "张老师",
+    "teacher_zhang": "张雪峰",
     "xuejie":        "学姐",
     "duanzishou":    "段子手",
     "jobs":          "乔布斯",
@@ -358,7 +358,7 @@ async def set_persona(
     current_default = PERSONA_DEFAULT_AGENT_NAME.get(getattr(user, "persona", None) or "teacher_zhang")
     all_defaults = set(PERSONA_DEFAULT_AGENT_NAME.values())
     if not user.agent_name or user.agent_name in all_defaults:
-        user.agent_name = PERSONA_DEFAULT_AGENT_NAME.get(persona, "张老师")
+        user.agent_name = PERSONA_DEFAULT_AGENT_NAME.get(persona, "张雪峰")
     db.commit()
     db.refresh(user)
     return {

@@ -2,7 +2,7 @@
 
 **本地化 AI Agent 平台** — 多智能体协作 + RAG 知识库 + 工具调用。
 
-本地部署、开箱即用的 Agent 框架: 三大核心场景(智能对话 / 资料库 / 个人中心)、3 种可切换 Persona(张老师 / 学姐 / 段子手, 蒸馏自 nuwa-skill 开源项目的真实思维框架)、完整运行过程可视化(8 步骤 trace 面板)、学情雷达 + 学习轨迹可视化。
+本地部署、开箱即用的 Agent 框架: 三大核心场景(智能对话 / 资料库 / 个人中心)、3 种可切换 Persona(张雪峰 / 学姐 / 段子手, 蒸馏自 nuwa-skill 开源项目的真实思维框架)、完整运行过程可视化(8 步骤 trace 面板)、学情雷达 + 学习轨迹可视化。
 
 仅供学习交流。
 
@@ -94,7 +94,7 @@ Key 申请地址：`https://openrouter.ai/keys`
 
 ## 三种使用方式
 
-**对话模式** —— 自由提问，张老师风格回答
+**对话模式** —— 自由提问，张雪峰风格回答
 - 例：「湖北 620 想学 AI」 / 「M-001 这道题怎么解」 / 「该不该考研」
 
 **资料库模式** —— 浏览内置知识库
@@ -190,7 +190,7 @@ LocalAgent/
 - v1.0.x：一键启动 + 知识库集成
 - v1.1.x：API Key 前端配置 + 项目清理
 - **v0.1.6**：5 页面架构（今日 / 会话 / 日程 / 资料库 / 画像）+ 会话防串台 + nuwa-skill 框架 + 个人画像精简 + 错题知识图谱 + 历史搜索 + 数据导出导入
-- **v0.1.7（参赛核心）**：Agent 完整运行过程可视化（8 步骤 trace 面板）+ 多角色实际接入（张老师 / 学姐 / 段子手 三种 persona，persona 真正生效到 system prompt）+ 画像可视化（学情雷达 SVG + 学习轨迹图）+ persona/agent_name 联动修复 + embedding 403 circuit breaker + schedule/toggle 真 toggle + api-key/test 可测当前 key + classifier markdown fence 解析 + ChatPage 切 tab 清 trace。修复下属测试 6 P0 + 4 P1。
+- **v0.1.7（参赛核心）**：Agent 完整运行过程可视化（8 步骤 trace 面板）+ 多角色实际接入（张雪峰 / 学姐 / 段子手 三种 persona，persona 真正生效到 system prompt）+ 画像可视化（学情雷达 SVG + 学习轨迹图）+ persona/agent_name 联动修复 + embedding 403 circuit breaker + schedule/toggle 真 toggle + api-key/test 可测当前 key + classifier markdown fence 解析 + ChatPage 切 tab 清 trace。修复下属测试 6 P0 + 4 P1。
 
 详细变更见各 commit message。
 

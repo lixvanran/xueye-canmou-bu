@@ -17,20 +17,27 @@ from typing import Dict, List
 
 MODEL_WHITELIST: Dict[str, List[str]] = {
     "low": [
+        "minimax/minimax-m2.7",              # minimaxM2.7 (默认 low)
         "qwen/qwen-2.5-7b-instruct",        # 千问 7b
-        "minimax/minimax-m2.7",              # minimaxM2.7
         "deepseek/deepseek-chat-v3.1",       # deepseek V3
+        "google/gemini-2.5-flash",           # Gemini 2.5 Flash
+        "meta-llama/llama-3.1-8b-instruct",  # Llama 3.1 8B
     ],
     "medium": [
-        "minimax/minimax-m3",                # minimaxM3
+        "minimax/minimax-m3",                # minimaxM3 (默认 medium)
         "z-ai/glm-5",                        # GLM 5
         "deepseek/deepseek-v4-flash",        # deepseek V4-Flash
+        "anthropic/claude-haiku-4.5",       # Claude Haiku 4.5
+        "openai/gpt-4.1-mini",               # GPT-4.1 mini
     ],
     "high": [
-        "minimax/minimax-m3",                # minimaxM3
+        "minimax/minimax-m3",                # minimaxM3 (默认 high)
         "x-ai/grok-4.20-multi-agent",        # grok 4.20 multi-agent 顶配
         "z-ai/glm-5.2",                      # GLM 5.2 顶配
         "deepseek/deepseek-v4-pro",          # deepseek V4-Pro 顶配
+        "anthropic/claude-sonnet-4.5",      # Claude Sonnet 4.5
+        "openai/gpt-5",                      # GPT-5
+        "google/gemini-2.5-pro",             # Gemini 2.5 Pro
     ],
 }
 

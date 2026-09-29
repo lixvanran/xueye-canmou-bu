@@ -82,6 +82,8 @@ class ChatRequest(BaseModel):
     deep_thinking_enabled: Optional[bool] = None
     # v0.7.5+: 强制指定模型档位 (low/medium/high) - 测试用, 跳过复杂度评估
     force_tier: Optional[str] = None
+    # v0.1.7+: 分级模式 - speed(快速)/normal(常规)/advanced(高级)
+    tier_mode: str = "normal"
 
 
 # ===== Conversation =====

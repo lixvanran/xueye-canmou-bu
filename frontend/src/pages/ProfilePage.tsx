@@ -56,7 +56,7 @@ export default function ProfilePage() {
     target_major: '',
     interest: '',
     notes: '',
-    agent_name: '张老师',
+    agent_name: '张雪峰',
     direction: '',
     language: '中文',
   })
@@ -67,9 +67,6 @@ export default function ProfilePage() {
   // v0.1.7: 学情统计 + 学习轨迹 + 人格
   const [stats, setStats] = useState<any>(null)
   const [timeline, setTimeline] = useState<any>(null)
-  const [personas, setPersonas] = useState<Array<{value: string; label: string; desc: string; scenario_fit: string[]}>>([])
-  const [currentPersona, setCurrentPersona] = useState<string>('teacher_zhang')
-  const [personaSwitching, setPersonaSwitching] = useState<string | null>(null)
 
   // v0.1.7+: 修复 — 主动 load userProfile (原来 useEffect 依赖 userProfile, 但 store 初始是 null, 永远不跑)
   const [profileLoaded, setProfileLoaded] = useState(false)
@@ -91,8 +88,6 @@ export default function ProfilePage() {
     loadProfileView()
     loadStats()
     loadTimeline()
-    loadPersonas()
-    loadCurrentPersona()
     return () => { cancelled = true }
   }, [])
 
@@ -101,25 +96,6 @@ export default function ProfilePage() {
   }
   const loadTimeline = async () => {
     try { setTimeline(await getLearningTimeline(30)) } catch (e) { console.error(e) }
-  }
-  const loadPersonas = async () => {
-    try { setPersonas(await getPersonas()) } catch (e) { console.error(e) }
-  }
-  const loadCurrentPersona = async () => {
-    try { setCurrentPersona(await getPersona()) } catch (e) { console.error(e) }
-  }
-  const handleSwitchPersona = async (next: string) => {
-    if (personaSwitching) return
-    setPersonaSwitching(next)
-    try {
-      const r = await setPersona(next)
-      setCurrentPersona(r.persona)
-      setUserProfile({ ...(userProfile as any), persona: r.persona })
-    } catch (e: any) {
-      alert('切换人格失败: ' + (e?.message || '?'))
-    } finally {
-      setPersonaSwitching(null)
-    }
   }
 
   const loadStages = async () => {
@@ -145,7 +121,7 @@ export default function ProfilePage() {
       target_major: p.target_major || '',
       interest: p.interest || p.interests || '',
       notes: p.notes || p.background || '',
-      agent_name: p.agent_name || '张老师',
+      agent_name: p.agent_name || '张雪峰',
       direction: p.direction || '',
       language: p.language || '中文',
     })
@@ -195,52 +171,6 @@ export default function ProfilePage() {
               {form.stage ? `${form.stage}` : '设置你的学段'} · {form.agent_name}
             </p>
           </div>
-        </div>
-
-        {/* v2.0: AI 怎么理解我 — 折叠区 (默认展开) */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg mb-4">
-          <button
-            onClick={() => setShowAIView(!showAIView)}
-            className="w-full px-4 py-3 flex items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-2">
-              <Bot size={16} className="text-purple-600" />
-              <span className="text-sm font-semibold text-purple-700">
-                AI 怎么理解我
-              </span>
-              <span className="text-xs text-purple-500">
-                (点开看 Agent 实际读到的画像)
-              </span>
-            </div>
-            {showAIView ? <ChevronUp size={16} className="text-purple-600" /> : <ChevronDown size={16} className="text-purple-600" />}
-          </button>
-          {showAIView && profileView && (
-            <div className="px-4 pb-4 border-t border-purple-200">
-              {profileView.derived_rules.length > 0 ? (
-                <div className="mt-3">
-                  <div className="text-xs font-semibold text-purple-700 mb-1">注入指令</div>
-                  <ul className="space-y-1 text-sm text-gray-700">
-                    {profileView.derived_rules.map((r, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="text-purple-500 mt-0.5">•</span>
-                        <span>{r}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <div className="mt-3 text-xs text-gray-500">暂无注入指令 (字段都是默认值)</div>
-              )}
-              <details className="mt-3">
-                <summary className="text-xs text-purple-600 cursor-pointer hover:underline">
-                  展开看完整 prompt 片段
-                </summary>
-                <pre className="mt-2 p-3 bg-white rounded border border-purple-200 text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto max-h-64 overflow-y-auto">
-                  {profileView.preview_prompt}
-                </pre>
-              </details>
-            </div>
-          )}
         </div>
 
         {/* Form: v2.0 精简版 (8 个可编辑字段) */}
@@ -354,18 +284,18 @@ export default function ProfilePage() {
                   type="text"
                   value={form.agent_name}
                   onChange={(e) => setForm({ ...form, agent_name: e.target.value })}
-                  placeholder="默认: 张老师"
+                  placeholder="默认: 张雪峰"
                   className="flex-1 border rounded-lg px-3 py-2"
                 />
                 <button
-                  onClick={() => setForm({ ...form, agent_name: '张老师' })}
+                  onClick={() => setForm({ ...form, agent_name: '张雪峰' })}
                   className="px-3 py-2 text-xs border rounded-lg hover:bg-gray-50"
                 >
                   恢复默认
                 </button>
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                自定义后, Agent 自我介绍时会用这个称呼 (不再自称"张老师")
+                自定义后, Agent 自我介绍时会用这个称呼 (不再自称"张雪峰")
               </p>
             </div>
 
@@ -388,49 +318,6 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* v0.1.7: Agent 人格选择 (v0.9.1 plan 中"预留"的多角色实际接入) */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              <Bot size={14} className="text-violet-600" />
-              Agent 人格
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {personas.map((p) => {
-                const active = p.value === currentPersona
-                return (
-                  <button
-                    key={p.value}
-                    onClick={() => handleSwitchPersona(p.value)}
-                    disabled={!!personaSwitching}
-                    className={`text-left p-3 rounded-lg border transition-all ${
-                      active
-                        ? 'border-violet-500 bg-violet-50 shadow-sm'
-                        : 'border-gray-200 bg-white hover:border-violet-300'
-                    } ${personaSwitching && !active ? 'opacity-50' : ''}`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-gray-800">{p.label}</span>
-                      {active && <span className="text-[10px] px-1.5 py-0.5 bg-violet-500 text-white rounded">当前</span>}
-                      {personaSwitching === p.value && (
-                        <span className="text-[10px] text-violet-600">切换中...</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500">{p.desc}</p>
-                    <div className="flex gap-1 mt-2">
-                      {p.scenario_fit.map((s) => (
-                        <span key={s} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
-                          {s === 'chat' ? '答疑' : s === 'exam' ? '考试' : s === 'volunteer' ? '志愿' : s === 'chitchat' ? '闲聊' : s}
-                        </span>
-                      ))}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              人格会注入到 system prompt, 立即生效 (下次对话自动应用)
-            </p>
-          </div>
 
           {/* v0.1.7: 学情雷达图 (画像可视化) */}
           {stats && (

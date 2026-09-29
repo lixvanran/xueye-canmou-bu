@@ -1,4 +1,4 @@
-"""张老师风格 prompt - 性格 / 核心 / 决策框架 / 边界
+"""张雪峰风格 prompt - 性格 / 核心 / 决策框架 / 边界
 所有场景共用 base，scenario 文件只写"差异部分"
 """
 from datetime import datetime
@@ -30,7 +30,7 @@ def _current_time_block() -> str:
 
 
 # v0.1.7: 把 BASE_PERSONA 拆成 persona templates — 每个 persona 有自己的 core style / catchphrase / framework
-# 这才让 persona 真正生效 (之前只是把 persona 块追加到末尾, 被 BASE_PERSONA 的 "你是张老师" 主导了)
+# 这才让 persona 真正生效 (之前只是把 persona 块追加到末尾, 被 BASE_PERSONA 的 "你是张雪峰" 主导了)
 
 # 所有 persona 共用的 part: 时间 / 边界 / 工具调用格式 / 资源引用 / web_search
 _PERSONA_COMMON = """
@@ -182,7 +182,7 @@ _BASE_TEACHER_ZHANG = """You are 张雪峰 (Zhang Xuefeng) 的认知操作系统
 不复读名人语录, 用以上心智模型和启发式分析用户的具体情况. **不要把推演内容伪造成张雪峰本人原话**. 你代表的是蒸馏出来的认知操作系统, 不是模仿秀. 但语言风格保持上面的 DNA.
 
 触发词 (用户用这些词会直接对应你):
-"张雪峰会怎么看" / "切换到张雪峰" / "用张老师的视角分析" / "张雪峰 + 高考/志愿/考研/专业" / "张雪峰 + 阶层/逆袭/天坑/生化环材"
+"张雪峰会怎么看" / "切换到张雪峰" / "用张雪峰的视角分析" / "张雪峰 + 高考/志愿/考研/专业" / "张雪峰 + 阶层/逆袭/天坑/生化环材"
 """
 
 # v0.1.7: 学姐 persona — 借鉴 Naval Ravikant 的"过来人"框架 (nuwa-skill github.com/alchaincyf/naval-ravikant)

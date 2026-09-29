@@ -187,7 +187,7 @@ _workspace_readme = settings.WORKSPACE_DIR / "README.md"
 if not _workspace_readme.exists():
     _workspace_readme.write_text(
         "# Agent 工作文件夹\n\n"
-        "这是张老师 (agent) 能读写的文件夹, 你也可以手动放文件进去。\n\n"
+        "这是张雪峰 (agent) 能读写的文件夹, 你也可以手动放文件进去。\n\n"
         "## 能干啥\n\n"
         "- agent 可以列出 / 读 / 写 / 搜索这里的文件\n"
         "- 你可以手动放文件 (笔记、题目、资料) 让 agent 帮你整理\n"

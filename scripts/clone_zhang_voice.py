@@ -91,7 +91,7 @@ def main():
                 "file_id": file_id,
                 "voice_id": f"teacher_zhang_{os.getpid()}",
                 "model": "speech-01",
-                "text": "同学们好，我是张老师，今天咱们来聊聊高考报志愿的事儿。",
+                "text": "同学们好，我是张雪峰，今天咱们来聊聊高考报志愿的事儿。",
             },
             timeout=120,
         )

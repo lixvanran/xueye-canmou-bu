@@ -42,9 +42,9 @@ def _render_base(web_search_enabled: bool, deep_thinking_enabled: bool, persona:
 
 def _render_persona_reminder(persona: str) -> str:
     """v0.1.7 [P0] 修复: 当 persona 不是 teacher_zhang 时, 在 prompt 末尾追加 persona 提醒,
-    因为 scenario prompts 大量写死'张老师'风格, LLM 会自然 follow scenario 主导.
-    - teacher_zhang: 不需要 (scenario 默认就是张老师)
-    - xuejie: 提醒'你是学姐, 不是张老师, 用学姐风格回答'
+    因为 scenario prompts 大量写死'张雪峰'风格, LLM 会自然 follow scenario 主导.
+    - teacher_zhang: 不需要 (scenario 默认就是张雪峰)
+    - xuejie: 提醒'你是学姐, 不是张雪峰, 用学姐风格回答'
     - duanzishou: 提醒'你是段子手, 用幽默轻松的风格'
     """
     if persona == "teacher_zhang":
@@ -52,18 +52,18 @@ def _render_persona_reminder(persona: str) -> str:
     reminders = {
         "xuejie": (
             "# ⚠️ Persona 提醒 (v0.1.7)\n"
-            "虽然 scenario 文字里常出现'张老师'字样, 但你现在的 persona 是 **学姐**, 不是张老师.\n"
+            "虽然 scenario 文字里常出现'张雪峰'字样, 但你现在的 persona 是 **学姐**, 不是张雪峰.\n"
             "- 用'我当年'/'我跟你讲'/'我建议你'等过来人语气\n"
             "- 称呼用'学弟/学妹/同学', 不要用'兄弟/孩子/家长'\n"
-            "- 不要用张老师的'老实说''你别不信'那种'过来人训话'语气\n"
+            "- 不要用张雪峰的'老实说''你别不信'那种'过来人训话'语气\n"
             "- 鼓励分享自己的失败/踩坑, 让用户放松"
         ),
         "duanzishou": (
             "# ⚠️ Persona 提醒 (v0.1.7)\n"
-            "虽然 scenario 文字里常出现'张老师'字样, 但你现在的 persona 是 **段子手**.\n"
+            "虽然 scenario 文字里常出现'张雪峰'字样, 但你现在的 persona 是 **段子手**.\n"
             "- 开口就有梗, 一个例子一个笑话一段正经话\n"
             "- 称呼用'兄弟/朋友/老铁', 不要用'学弟/家长'\n"
-            "- 不要用张老师的'老实说''你别不信'那种直给语气\n"
+            "- 不要用张雪峰的'老实说''你别不信'那种直给语气\n"
             "- **严肃问题**(心理危机/重大决策/真正难过的事) 严肃对待, 不开玩笑"
         ),
     }
@@ -113,7 +113,7 @@ def build_system_prompt(
 ) -> str:
     """拼装 system prompt - 顺序：base → scenario → profile+stage → RAG context → persona_reminder
     v0.1.7: 加 persona 参数, 默认 teacher_zhang (向后兼容)
-    v0.1.7 [P0] 修复: 末尾加 persona reminder, 防止 scenario 文字里的'张老师'主导
+    v0.1.7 [P0] 修复: 末尾加 persona reminder, 防止 scenario 文字里的'张雪峰'主导
     """
     ws_on = _resolve_toggle(web_search_enabled, "WEB_SEARCH_ENABLED")
     dt_on = _resolve_toggle(deep_thinking_enabled, "DEEP_THINKING_ENABLED")

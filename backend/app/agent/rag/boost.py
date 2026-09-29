@@ -58,7 +58,7 @@ def build_gaokao_boost_entry(item: Dict[str, Any], province: str) -> Dict[str, A
         rich_lines.append(f"650分能上：{item.get('650分_能上')}")
     if item.get('official_source'):
         rich_lines.append(f"数据来源：{item.get('official_source')}")
-    rich_lines.append(f"\n张老师点评：{item.get('张老师点评', '')}")
+    rich_lines.append(f"\n张雪峰点评：{item.get('张雪峰点评', '')}")
     return {
         "type": "gaokao_2026",
         "title": f"{province} 2026 高考分数线",

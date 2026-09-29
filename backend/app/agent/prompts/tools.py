@@ -87,7 +87,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "compare_schools",
-            "description": "多院校综合对比. 输入学校名称列表, 返回每个学校的层次/城市/排名/王炸专业/张老师点评.",
+            "description": "多院校综合对比. 输入学校名称列表, 返回每个学校的层次/城市/排名/王炸专业/张雪峰点评.",
             "parameters": {
                 "type": "object",
                 "properties": {

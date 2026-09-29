@@ -39,13 +39,13 @@ KB_INDEX_FIELD = {
 KB_DISPLAY_FIELD = {
     "01_persona": lambda item: f"[{item.get('type', 'persona')}] {item.get('name', '')}" + (f"\n核心: {item.get('core', '')}" if item.get('core') else f"\n{item.get('summary', '')[:200]}"),
     "02_quotes": lambda item: f"[{item.get('category', '语录')}] \"{item.get('text', '')}\"\n场景: {item.get('context', '')}",
-    "03_majors": lambda item: f"专业: {item.get('name')} ({item.get('category_zh', '')})\n就业率: {item.get('employment_rate', '?')} | 月薪: {item.get('median_salary', '?')} | 考研: {item.get('grad_school_ratio', '?')}\n张老师点评: {item.get('comment', '')}",
-    "04_universities": lambda item: f"院校: {item.get('name')} ({item.get('tier', '')})\n城市: {item.get('city')} | 最低分(2024): {item.get('min_score_2024', '?')} | 位次: {item.get('min_rank_2024', '?')}\n特色: {item.get('features', '')}\n王炸专业: {', '.join(item.get('famous_majors', []))}\n张老师点评: {item.get('teacher_comment', '')}",
+    "03_majors": lambda item: f"专业: {item.get('name')} ({item.get('category_zh', '')})\n就业率: {item.get('employment_rate', '?')} | 月薪: {item.get('median_salary', '?')} | 考研: {item.get('grad_school_ratio', '?')}\n张雪峰点评: {item.get('comment', '')}",
+    "04_universities": lambda item: f"院校: {item.get('name')} ({item.get('tier', '')})\n城市: {item.get('city')} | 最低分(2024): {item.get('min_score_2024', '?')} | 位次: {item.get('min_rank_2024', '?')}\n特色: {item.get('features', '')}\n王炸专业: {', '.join(item.get('famous_majors', []))}\n张雪峰点评: {item.get('teacher_comment', '')}",
     "05_volunteer_strategy": lambda item: f"[{item.get('type', '策略')}] {item.get('name') or item.get('text', '')[:50]}\n{item.get('content') or item.get('text', '')}",
     "06_career_employment": lambda item: f"[{item.get('type', '就业')}] {item.get('title') or item.get('text', '')[:50]}\n{item.get('content') or item.get('text', '')}",
     "07_life_study": lambda item: f"[{item.get('category') or item.get('type', '人生')}] {item.get('title') or item.get('text', '')[:50]}\n{item.get('content') or item.get('text', '')}",
     "08_admission_scores": lambda item: f"录取数据: {item.get('school_name')} {item.get('province')} {item.get('subject_type', '')} {item.get('year')}年\n最低分: {item.get('min_score', '?')} | 平均分: {item.get('avg_score', '?')} | 最高分: {item.get('max_score', '?')} | 最低位次: {item.get('min_rank', '?')}",
-    "09_policies": lambda item: f"[{item.get('type', '政策')}] {item.get('name')}\n{item.get('summary', '')}\n要点: {'; '.join(item.get('key_points', [])[:3])}\n张老师点评: {item.get('teacher_comment', '')}",
+    "09_policies": lambda item: f"[{item.get('type', '政策')}] {item.get('name')}\n{item.get('summary', '')}\n要点: {'; '.join(item.get('key_points', [])[:3])}\n张雪峰点评: {item.get('teacher_comment', '')}",
     "10_external_kb": lambda item: f"[{item.get('topic', '外部KB')}] {item.get('context', '')[:80]}\n{item.get('text', '')}" + (f"\n[来源: {item.get('source', '?')} / {item.get('license', '?')}]" if item.get('source') else ""),
 }
 

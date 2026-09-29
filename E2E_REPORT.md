@@ -43,11 +43,11 @@
 ### ✅ 5. 个人画像注入 (context_builder)
 - `stage=='初中'`: 注入 "用户是初中生, 解题用初中方法, 不引入高中公式" (line 61-63)
 - `language=='英文'`: 注入 "回复以英文为主" (line 51 + 后续)
-- `agent_name != "张老师"`: 注入 "你叫 {name}, 不要自称'张老师'" (line 88-92)
+- `agent_name != "张雪峰"`: 注入 "你叫 {name}, 不要自称'张雪峰'" (line 88-92)
 - **报志愿场景 (volunteer) 不被覆盖** (line 53 + 158 注释说明)
 
 ### ✅ 6. 旧端点 410 (workspace.py)
-- `workspace.py:243-267`: 旧 "张老师讲题" + "一键生成标答" 端点保留 stub, **返回 `status_code=410` Gone** + 迁移提示
+- `workspace.py:243-267`: 旧 "张雪峰讲题" + "一键生成标答" 端点保留 stub, **返回 `status_code=410` Gone** + 迁移提示
 - 新端点 `POST /api/workspace/mistakes/{id}/explain` 接管
 
 ### ✅ 7. 去张雪峰化扫描

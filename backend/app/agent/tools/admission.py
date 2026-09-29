@@ -131,7 +131,7 @@ async def calculate_match(
         "total": len(matches),
         "matches": matches,
         "data_source": "db/scores.json (2023-2025 真实录取数据, 8.5万条)",
-        "hint": "基于真实录取数据. 实际请以本省教育考试院最新发布的'一分一段表'为准. 4.0 上岸 ↗",  # 张老师经典
+        "hint": "基于真实录取数据. 实际请以本省教育考试院最新发布的'一分一段表'为准. 4.0 上岸 ↗",  # 张雪峰经典
     }
 
 
@@ -460,7 +460,7 @@ async def analyze_major(major_name: str) -> Dict:
             found_db = m
             break
 
-    # 2. 查 KB (张老师点评)
+    # 2. 查 KB (张雪峰点评)
     kb_majors = load_kb("03_majors.json")
     found_kb = None
     for m in kb_majors:
@@ -485,5 +485,5 @@ async def analyze_major(major_name: str) -> Dict:
         "description": (found_db or {}).get("description"),
         "teacher_comment": (found_kb or {}).get("comment"),
         "warning": (found_kb or {}).get("warning"),
-        "data_source": "db/majors.json (8.5万条) + KB 03_majors.json (张老师点评)",
+        "data_source": "db/majors.json (8.5万条) + KB 03_majors.json (张雪峰点评)",
     }
