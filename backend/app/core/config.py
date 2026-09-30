@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "LocalAgent"
-    APP_VERSION: str = "1.1.9"  # v0.1.7: 参赛核心 (Agent 全过程可视化 + 多角色实际接入 + 画像可视化 + 学习轨迹图) + 6 P0/4 P1 修复
+    APP_VERSION: str = "1.2.2"  # v1.2.2: 前端 5 P0 + 16 头像 + 课间解压 (后端滚回 v1.1.9, 仅换 key)
     DEBUG: bool = True
 
     # Server

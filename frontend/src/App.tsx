@@ -8,16 +8,17 @@
  * - sidebar 标题展示 useAgentName
  */
 import { useState } from 'react'
-import { Sparkles, MessageSquare, Calendar, FolderOpen, User, Settings } from 'lucide-react'
+import { Sparkles, MessageSquare, Calendar, FolderOpen, User, Settings, Gamepad2 } from 'lucide-react'
 import TodayPage from '@/pages/TodayPage'
 import ChatPage from '@/pages/ChatPage'
 import SchedulePage from '@/pages/SchedulePage'
 import ResourcesPage from '@/pages/ResourcesPage'
 import ProfilePage from '@/pages/ProfilePage'
+import GamePage from '@/pages/GamePage'
 import SettingsModal from '@/components/SettingsModal'
 import { useAgentName } from '@/hooks/useAgentName'
 
-type PageKey = 'today' | 'chat' | 'schedule' | 'resources' | 'profile' | 'settings'
+type PageKey = 'today' | 'chat' | 'schedule' | 'resources' | 'profile' | 'game' | 'settings'
 
 interface NavItem {
   key: PageKey
@@ -32,6 +33,8 @@ const navItems: NavItem[] = [
   { key: 'schedule', label: '日程', icon: Calendar, color: 'text-emerald-500' },
   { key: 'resources', label: '资料库', icon: FolderOpen, color: 'text-indigo-500' },
   { key: 'profile', label: '画像', icon: User, color: 'text-purple-500' },
+  // v1.2.2 [P2] 课间解压 — 张雪峰快跑 + 高一必修一背诵, 放在画像和设置之间
+  { key: 'game', label: '课间解压', icon: Gamepad2, color: 'text-rose-500' },
 ]
 
 const settingsItem: NavItem = {
@@ -43,16 +46,30 @@ const settingsItem: NavItem = {
 
 export default function App() {
   const [page, setPage] = useState<PageKey>('today')
+  // v1.1.10 [P0] visited 集合 — 页面一旦进过就保持 mounted, 切走只 display:none.
+  // 原实现 {page === 'chat' && <ChatPage />} 会 unmount ChatPage,
+  // 导致 Agent 跑一半切到「资料库」再切回来 → SSE 被 abort, trace/消息全丢.
+  const [visited, setVisited] = useState<Set<PageKey>>(() => new Set<PageKey>(['today']))
   const [settingsOpen, setSettingsOpen] = useState(false)
   // hook 启动时会自动从 profile 加载 agent_name
   const [agentName] = useAgentName()
+
+  const go = (p: PageKey) => {
+    setPage(p)
+    setVisited(prev => {
+      if (prev.has(p)) return prev
+      const next = new Set(prev)
+      next.add(p)
+      return next
+    })
+  }
 
   const onNavClick = (key: PageKey) => {
     if (key === 'settings') {
       setSettingsOpen(true)
     } else {
       setSettingsOpen(false)
-      setPage(key)
+      go(key)
     }
   }
 
@@ -64,7 +81,7 @@ export default function App() {
           {/* v0.1.6: 主页标题用 useAgentName, 自定义名字全屏统一 */}
           <h1 className="text-lg font-bold tracking-tight">{agentName}</h1>
           <div className="text-xs text-zinc-500 mt-1">
-            LocalAgent · 当前称呼
+            学业参谋部 · 当前称呼
           </div>
         </div>
 
@@ -108,16 +125,31 @@ export default function App() {
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             <span>服务运行中</span>
           </div>
-          <div className="mt-1.5 text-zinc-400">LocalAgent v0.1.7</div>
+          <div className="mt-1.5 text-zinc-400">学业参谋部 v1.2.2</div>
         </div>
       </aside>
 
+      {/* v1.1.10 [P0] keep-alive 渲染 — visited 过的页面保持 mounted, 切走仅隐藏.
+          这样 Agent 跑到一半切到别的页面再切回来, 流还在跑, 消息和 trace 都在. */}
       <main className="flex-1 overflow-hidden relative z-0">
-        {page === 'today' && <TodayPage onNavigate={(p) => setPage(p as PageKey)} />}
-        {page === 'chat' && <ChatPage />}
-        {page === 'schedule' && <SchedulePage />}
-        {page === 'resources' && <ResourcesPage />}
-        {page === 'profile' && <ProfilePage />}
+        <div className={page === 'today' ? 'h-full' : 'hidden'}>
+          {visited.has('today') && <TodayPage onNavigate={(p) => go(p as PageKey)} />}
+        </div>
+        <div className={page === 'chat' ? 'h-full' : 'hidden'}>
+          {visited.has('chat') && <ChatPage />}
+        </div>
+        <div className={page === 'schedule' ? 'h-full' : 'hidden'}>
+          {visited.has('schedule') && <SchedulePage />}
+        </div>
+        <div className={page === 'resources' ? 'h-full' : 'hidden'}>
+          {visited.has('resources') && <ResourcesPage />}
+        </div>
+        <div className={page === 'profile' ? 'h-full' : 'hidden'}>
+          {visited.has('profile') && <ProfilePage />}
+        </div>
+        <div className={page === 'game' ? 'h-full' : 'hidden'}>
+          {visited.has('game') && <GamePage />}
+        </div>
       </main>
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}

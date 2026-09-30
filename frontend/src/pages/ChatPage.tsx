@@ -28,7 +28,7 @@ import {
   MessageSquare, GraduationCap, MessageCircle, ChevronDown, Loader2, AlertCircle, CheckCircle2,
   UserCircle2, BookOpen, Target, X, Sparkles, Search, Calendar, Clock, ArrowRight,
   Cpu, Brain, Wrench, Database, Network, Activity, GitBranch, ChevronRight as ChevronRightSm,
-  Users, Zap, Timer, Layers, Paperclip, FileText as FileIcon, Trash2,
+  Users, Zap, Timer, Layers, Paperclip, FileText as FileIcon, Trash2, Plus,
 } from 'lucide-react'
 import api from '@/api/client'
 import { listResources } from '@/api/resources'
@@ -88,24 +88,25 @@ const TABS: TabConfig[] = [
 
 // v0.1.7+: 16 persona — 与后端 AVAILABLE_PERSONAS 同步
 // 来源: nuwa-skill 蒸馏 13 人物 + 1 主题 (github.com/alchaincyf, MIT) + 自蒸馏 xuejie / duanzishou
-type PersonaEntry = { value: string; label: string; desc: string }
+// v1.2.2+: avatar 字段指向 /public/avatars/{value}.jpg (Pixar 风 cartoon 头像)
+type PersonaEntry = { value: string; label: string; desc: string; avatar: string }
 const PERSONAS: PersonaEntry[] = [
-  { value: 'teacher_zhang', label: '张雪峰',  desc: 'nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 启发' },
-  { value: 'xuejie',        label: '学姐',    desc: '串行复利 · 适合答疑陪伴' },
-  { value: 'duanzishou',    label: '段子手',  desc: '第一性原理 + 段子 · 适合闲聊' },
-  { value: 'jobs',          label: '乔布斯',  desc: '专注=说不 · 产品/设计/战略' },
-  { value: 'musk',          label: '马斯克',  desc: '第一性原理 · 工程/成本/删减' },
-  { value: 'munger',        label: '芒格',    desc: '反转思维 · 投资/多学科' },
-  { value: 'feynman',       label: '费曼',    desc: '命名≠理解 · 学习/科学' },
-  { value: 'naval',         label: '纳瓦尔',  desc: '杠杆思维 · 财富/人生哲学' },
-  { value: 'zhang_yiming',  label: '张一鸣',  desc: '延迟满足 · 产品/组织/全球化' },
-  { value: 'paul_graham',   label: 'Paul Graham', desc: '写作=思考 · 创业/YC' },
-  { value: 'karpathy',      label: 'Karpathy', desc: 'Software X.0 · AI/工程' },
-  { value: 'ilya',          label: 'Ilya 苏茨克维', desc: '压缩=理解 · AI 安全/研究' },
-  { value: 'mrbeast',       label: 'MrBeast', desc: 'CTR×AVD · 内容/YouTube' },
-  { value: 'trump',         label: '特朗普',  desc: '一切都是交易 · 谈判/权力' },
-  { value: 'taleb',         label: '塔勒布',  desc: '反脆弱 · 风险/黑天鹅' },
-  { value: 'x_mastery',     label: 'X Mastery', desc: '6 位创作者综合 · X/Twitter 运营' },
+  { value: 'teacher_zhang', label: '张雪峰',  desc: 'nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 启发', avatar: '/avatars/teacher_zhang.jpg' },
+  { value: 'xuejie',        label: '学姐',    desc: '串行复利 · 适合答疑陪伴', avatar: '/avatars/xuejie.jpg' },
+  { value: 'duanzishou',    label: '段子手',  desc: '第一性原理 + 段子 · 适合闲聊', avatar: '/avatars/duanzishou.jpg' },
+  { value: 'jobs',          label: '乔布斯',  desc: '专注=说不 · 产品/设计/战略', avatar: '/avatars/jobs.jpg' },
+  { value: 'musk',          label: '马斯克',  desc: '第一性原理 · 工程/成本/删减', avatar: '/avatars/musk.jpg' },
+  { value: 'munger',        label: '芒格',    desc: '反转思维 · 投资/多学科', avatar: '/avatars/munger.jpg' },
+  { value: 'feynman',       label: '费曼',    desc: '命名≠理解 · 学习/科学', avatar: '/avatars/feynman.jpg' },
+  { value: 'naval',         label: '纳瓦尔',  desc: '杠杆思维 · 财富/人生哲学', avatar: '/avatars/naval.jpg' },
+  { value: 'zhang_yiming',  label: '张一鸣',  desc: '延迟满足 · 产品/组织/全球化', avatar: '/avatars/zhang_yiming.jpg' },
+  { value: 'paul_graham',   label: 'Paul Graham', desc: '写作=思考 · 创业/YC', avatar: '/avatars/paul_graham.jpg' },
+  { value: 'karpathy',      label: 'Karpathy', desc: 'Software X.0 · AI/工程', avatar: '/avatars/karpathy.jpg' },
+  { value: 'ilya',          label: 'Ilya 苏茨克维', desc: '压缩=理解 · AI 安全/研究', avatar: '/avatars/ilya.jpg' },
+  { value: 'mrbeast',       label: 'MrBeast', desc: 'CTR×AVD · 内容/YouTube', avatar: '/avatars/mrbeast.jpg' },
+  { value: 'trump',         label: '特朗普',  desc: '一切都是交易 · 谈判/权力', avatar: '/avatars/trump.jpg' },
+  { value: 'taleb',         label: '塔勒布',  desc: '反脆弱 · 风险/黑天鹅', avatar: '/avatars/taleb.jpg' },
+  { value: 'x_mastery',     label: 'X Mastery', desc: '6 位创作者综合 · X/Twitter 运营', avatar: '/avatars/x_mastery.jpg' },
 ]
 
 // v2.0: scenario label 映射 (search 结果用)
@@ -171,14 +172,21 @@ function saveConvIds(ids: Record<ChatTab, number | null>) {
 export default function ChatPage() {
   const [activeTab, setActiveTab] = useState<ChatTab>(() => loadActiveTab())
   const [convIds, setConvIds] = useState<Record<ChatTab, number | null>>(() => loadConvIds())
-  // 单 in-memory message buffer: 切换 tab 时清空, 不带上下文
-  const [messages, setMessages] = useState<any[]>([])
-  // v0.1.6: 发送状态 (补回被删的 send 按钮功能)
-  const [sending, setSending] = useState(false)
-  const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null)
+  // v1.1.10 [P0] 发送状态改成 per-tab — 切 tab 不再中断别的 tab 的流
+  const [sendingByTab, setSendingByTab] = useState<Record<ChatTab, boolean>>(() => ({
+    qa: false, volunteer: false, chitchat: false, team: false,
+  }))
+  const sending = sendingByTab[activeTab] || false
   const messagesEndRef = useRef<HTMLDivElement>(null)
   // v0.1.7: 当前正在流的 trace (assistant 消息接收 event 时累积)
-  const [currentTrace, setCurrentTrace] = useState<any>(null)
+  // v1.1.10 [P0] trace 改成 per-tab — 否则切 tab 时 trace 串到别的 tab
+  const [traceByTab, setTraceByTab] = useState<Record<ChatTab, any>>(() => ({
+    qa: null, volunteer: null, chitchat: null, team: null,
+  }))
+  const currentTrace = traceByTab[activeTab] || null
+  const setCurrentTrace = (v: any) => {
+    setTraceByTab(prev => ({ ...prev, [activeTab]: v }))
+  }
   const [input, setInput] = useState('')
 
   // v0.1.7+: 团队模式 — persona multi-select (2-5 个) + team SSE 流式
@@ -295,8 +303,6 @@ export default function ChatPage() {
     setOpenConvMsg(null)
     try {
       const data = await getConversation(convId)
-      // 把消息塞到当前 in-memory buffer
-      setMessages(data.messages || [])
       setSearchOpen(false)
       setSearchQ('')
       // 切到对应 tab (用场景映射)
@@ -307,9 +313,12 @@ export default function ChatPage() {
         chitchat: 'chitchat',
       }
       const targetTab = mapped[scenario] || 'qa'
+      // v1.1.10 [P0] 顺序修正 — 先切 tab (它会写 messagesByTab[next]=[]), 再塞消息.
+      // 原代码先 setMessages(data.messages) 后 switchTab → switchTab 的清空把刚加载的消息冲掉了.
       if (targetTab !== activeTab) {
-        switchTab(targetTab)
+        setActiveTab(targetTab)
       }
+      setMessagesByTab(prev => ({ ...prev, [targetTab]: data.messages || [] }))
       setConvIds(prev => ({ ...prev, [targetTab]: convId }))
       setOpenConvMsg({ type: 'ok', text: `已打开会话 #${convId}: ${data.title || '(无标题)'}` })
       setTimeout(() => setOpenConvMsg(null), 2500)
@@ -354,27 +363,46 @@ export default function ChatPage() {
     setTimeout(() => setScheduleActionMsg(null), 5000)
   }
 
+  /* v1.1.10 [P0] 每个 tab 独立 message buffer
+     原实现: 单一 messages[] + 切 tab 清空 → 切回来历史全丢, 且流式中切 tab 会把
+     正在跑的 assistant 消息冲掉. 现在: messages 改成 Record<ChatTab, any[]>,
+     切 tab 不 abort stream, 每个 tab 各自跑各自的流. */
+  const [messagesByTab, setMessagesByTab] = useState<Record<ChatTab, any[]>>(() => ({
+    qa: [], volunteer: [], chitchat: [], team: [],
+  }))
+  // in-flight stream 按 tab 记录, 切 tab 不再中断
+  const abortByTab = useRef<Partial<Record<ChatTab, AbortController>>>({})
+
+  const messages = messagesByTab[activeTab] || []
+  const setMessages = (updater: any) => {
+    const tab = activeTabRef.current
+    setMessagesByTab(prev => ({
+      ...prev,
+      [tab]: typeof updater === 'function' ? updater(prev[tab] || []) : updater,
+    }))
+  }
+  // 让 setMessages 闭包拿到最新 activeTab (流式中切 tab 也能写对 tab)
+  const activeTabRef = useRef<ChatTab>(activeTab)
+  activeTabRef.current = activeTab
+
   const switchTab = (next: ChatTab) => {
     if (next === activeTab) return
-    // 切换 tab: 清空 in-memory message buffer, 不带上下文
-    setMessages([])
-    setInput('')
+    // v1.1.10 [P0] 切 tab 不清空 buffer, 不 abort stream — 每个 tab 独立跑
     setActiveTab(next)
+    setInput('')
     setPersonaMsg(null)
-    // v0.1.7 修复 [P1] 下属报告: 切 tab 时清 trace, 否则切回原 tab 看到陈旧 trace 卡片
-    setCurrentTrace({
-      started: false,
-      steps: [],
-      llm_done: false,
-      tool_calls_count: 0,
-      total_latency_ms: 0,
-      model_used: '',
-    })
-    // 同时 abort in-flight stream (如有)
-    if (abortCtrl) {
-      try { abortCtrl.abort() } catch {}
-      setAbortCtrl(null)
-    }
+    setPersonaOpen(false)
+    setSearchOpen(false)
+  }
+
+  // v1.1.10 [P0] 新建对话 — 显式把当前 tab 的 conv_id 置空 + 清 buffer
+  const handleNewConversation = () => {
+    if (sending) return
+    setConvIds(prev => ({ ...prev, [activeTab]: null }))
+    setMessagesByTab(prev => ({ ...prev, [activeTab]: [] }))
+    setCurrentTrace(null)
+    setOpenConvMsg({ type: 'ok', text: '已开新对话 (不带历史上下文)' })
+    setTimeout(() => setOpenConvMsg(null), 2000)
   }
 
   // v0.1.6: 发送消息 — 调 /api/chat 流式响应, 渲染到消息列表
@@ -389,10 +417,13 @@ export default function ChatPage() {
     const text = input.trim()
     if (!text || sending) return
 
-    const scenario = tabToScenario[activeTab] || 'chat'
+    // v1.1.10 [P0] 全部锁到 sentTab — 流式中切 tab 也写到正确的 tab
+    const sentTab = activeTab
+    const scenario = tabToScenario[sentTab] || 'chat'
+    const sentConvId = currentConvId
     const ctrl = new AbortController()
-    setAbortCtrl(ctrl)
-    setSending(true)
+    abortByTab.current[sentTab] = ctrl
+    setSendingByTab(prev => ({ ...prev, [sentTab]: true }))
 
     // 1. 立即塞 user message
     const userMsg = { role: 'user', content: text, created_at: new Date().toISOString() }
@@ -403,14 +434,25 @@ export default function ChatPage() {
       created_at: new Date().toISOString(),
       trace: null, // v0.1.7: Agent 完整运行过程 (route/rag/tools/thinking)
     }
-    setMessages((prev) => [...prev, userMsg, assistantMsg])
+    setMessagesByTab(prev => ({ ...prev, [sentTab]: [...(prev[sentTab] || []), userMsg, assistantMsg] }))
     setInput('')
     const emptyTrace = {
       start: null as any, ctx: null as any, route: null as any, rag: null as any, rag_trace: null as any,
       tool_calls: [] as any[], tool_results: [] as any[], thinking: '', reasoning: null as any,
       llm_done: null as any, end: null as any,
     }
-    setCurrentTrace({ ...emptyTrace })
+    setTraceByTab(prev => ({ ...prev, [sentTab]: { ...emptyTrace } }))
+
+    // 局部 helpers — 全部写 sentTab, 不依赖 activeTab 闭包
+    const patchLastAssistant = (fn: (m: any) => any) => {
+      setMessagesByTab(prev => {
+        const arr = [...(prev[sentTab] || [])]
+        const idx = arr.length - 1
+        if (idx >= 0 && arr[idx].role === 'assistant') arr[idx] = fn(arr[idx])
+        return { ...prev, [sentTab]: arr }
+      })
+    }
+    const setTabTrace = (v: any) => setTraceByTab(prev => ({ ...prev, [sentTab]: v }))
 
     try {
       let acc = ''
@@ -419,24 +461,17 @@ export default function ChatPage() {
         tool_calls: [],
         tool_results: [],
       }
-      const updateTrace = () => setCurrentTrace({ ...trace })
+      const updateTrace = () => setTabTrace({ ...trace })
       const commitTraceToMsg = () => {
         // 流结束后把 trace 塞回消息对象
-        setMessages((prev) => {
-          const next = [...prev]
-          const idx = next.length - 1
-          if (idx >= 0 && next[idx].role === 'assistant') {
-            next[idx] = { ...next[idx], trace: { ...trace } }
-          }
-          return next
-        })
+        patchLastAssistant(m => ({ ...m, trace: { ...trace } }))
       }
 
       for await (const ev of streamChat(
         {
           message: text,
           scenario,
-          conversation_id: currentConvId ?? undefined,
+          conversation_id: sentConvId ?? undefined,
           user_id: 1,
           stream: true,
           tier_mode: tierMode,  // v0.1.7+: 分级模式
@@ -446,9 +481,9 @@ export default function ChatPage() {
         switch (ev.type) {
           case 'start':
             trace.start = ev.data
-            // v0.1.7+ 上下文记忆: 把后端创建的 conv_id 存到当前 tab
+                  // v0.1.7+ 上下文记忆: 把后端创建的 conv_id 存到本次发送的 tab
             if (ev.data?.conv_id) {
-              setConvIds(prev => ({ ...prev, [activeTab]: ev.data.conv_id }))
+              setConvIds(prev => ({ ...prev, [sentTab]: ev.data.conv_id }))
             }
             updateTrace()
             break
@@ -508,50 +543,30 @@ export default function ChatPage() {
             break
           case 'content':
             acc += String(ev.data || '')
-            // 更新最后一条 assistant 消息
-            setMessages((prev) => {
-              const next = [...prev]
-              const idx = next.length - 1
-              if (idx >= 0 && next[idx].role === 'assistant') {
-                next[idx] = { ...next[idx], content: acc, streaming: true }
-              }
-              return next
-            })
+            patchLastAssistant(m => ({ ...m, content: acc, streaming: true }))
             break
           case 'stopped':
-            setMessages((prev) => {
-              const next = [...prev]
-              const idx = next.length - 1
-              if (idx >= 0 && next[idx].role === 'assistant') {
-                next[idx] = { ...next[idx], content: acc + '\n\n[已停止]', streaming: false }
-              }
-              return next
-            })
+            patchLastAssistant(m => ({ ...m, content: acc + '\n\n[已停止]', streaming: false }))
             break
         }
       }
       // 流结束 — 标记 streaming=false + trace 入消息
-      commitTraceToMsg()
-      setCurrentTrace(null)
+      patchLastAssistant(m => ({ ...m, streaming: false, trace: { ...trace } }))
+      setTraceByTab(prev => ({ ...prev, [sentTab]: null }))
     } catch (e: any) {
       const isAbort = e?.name === 'AbortError' || ctrl.signal.aborted
-      setMessages((prev) => {
-        const next = [...prev]
-        const idx = next.length - 1
-        if (idx >= 0 && next[idx].role === 'assistant') {
-          next[idx] = {
-            ...next[idx],
-            content: next[idx].content + (isAbort ? '\n\n[已停止]' : '\n\n[出错: ' + (e?.message || '?') + ']'),
-            streaming: false,
-          }
-        }
-        return next
-      })
+      patchLastAssistant(m => ({
+        ...m,
+        content: m.content + (isAbort ? '\n\n[已停止]' : '\n\n[出错: ' + (e?.message || '?') + ']'),
+        streaming: false,
+      }))
     } finally {
-      setSending(false)
-      setAbortCtrl(null)
-      // 滚到底
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      setSendingByTab(prev => ({ ...prev, [sentTab]: false }))
+      delete abortByTab.current[sentTab]
+      // 滚到底 (仅当用户还停在 sentTab)
+      if (activeTabRef.current === sentTab) {
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      }
     }
   }
 
@@ -697,7 +712,8 @@ export default function ChatPage() {
   }
 
   const handleAbort = () => {
-    abortCtrl?.abort()
+    // v1.1.10 [P0] 只 abort 当前 tab 的流, 不影响其他 tab
+    abortByTab.current[activeTab]?.abort()
   }
 
   const handlePersonaChange = async (next: string) => {
@@ -844,11 +860,17 @@ export default function ChatPage() {
               <button
                 onClick={() => setPersonaOpen(o => !o)}
                 disabled={personaLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 border border-violet-200 rounded-full text-xs font-medium text-violet-700 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-2.5 py-1 bg-violet-50 border border-violet-200 rounded-full text-xs font-medium text-violet-700 hover:bg-violet-100 transition-colors disabled:opacity-50"
                 title="切换 Agent 人格"
               >
-                <UserCircle2 size={13} />
-                {PERSONAS.find(p => p.value === persona)?.label || persona}
+                {/* v1.2.2 [P2] 当前 persona 头像 (圆角小图) */}
+                <img
+                  src={PERSONAS.find(p => p.value === persona)?.avatar}
+                  alt=""
+                  className="w-5 h-5 rounded-full object-cover ring-1 ring-violet-200 bg-zinc-100"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+                <span>{PERSONAS.find(p => p.value === persona)?.label || persona}</span>
                 {personaLoading ? (
                   <Loader2 size={11} className="animate-spin" />
                 ) : (
@@ -856,27 +878,39 @@ export default function ChatPage() {
                 )}
               </button>
               {personaOpen && (
-                <div className="absolute right-0 top-full mt-1 z-40 w-72 bg-white border border-black/10 rounded-xl shadow-xl overflow-hidden">
-                  <div className="px-3 py-2 border-b border-black/5 bg-zinc-50/60">
+                /* v1.1.10 [P0] 限高 + 内部滚动 — 16 个 persona 原来撑爆视口, 盖住整个主区 */
+                <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-white border border-black/10 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[min(60vh,28rem)]">
+                  <div className="px-3 py-2 border-b border-black/5 bg-zinc-50/60 flex-shrink-0">
                     <div className="text-xs font-semibold text-zinc-700">切换 Agent 人格</div>
                     <div className="text-[10px] text-zinc-400 mt-0.5">下次对话自动应用</div>
                   </div>
-                  {PERSONAS.map(p => (
-                    <button
-                      key={p.value}
-                      onClick={() => handlePersonaChange(p.value)}
-                      disabled={personaLoading}
-                      className={`w-full flex flex-col items-start px-3 py-2.5 text-left text-sm hover:bg-violet-50 transition-colors disabled:opacity-50 border-b border-black/5 last:border-b-0 ${
-                        persona === p.value ? 'bg-violet-50' : ''
-                      }`}
-                    >
-                      <span className="font-medium text-zinc-800 flex items-center gap-2">
-                        <span>{p.label}</span>
-                        {persona === p.value && <CheckCircle2 size={12} className="text-violet-500" />}
-                      </span>
-                      <span className="text-xs text-zinc-500 mt-0.5">{p.desc}</span>
-                    </button>
-                  ))}
+                  <div className="overflow-y-auto overscroll-contain">
+                    {PERSONAS.map(p => (
+                      <button
+                        key={p.value}
+                        onClick={() => handlePersonaChange(p.value)}
+                        disabled={personaLoading}
+                        className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left text-sm hover:bg-violet-50 transition-colors disabled:opacity-50 border-b border-black/5 last:border-b-0 ${
+                          persona === p.value ? 'bg-violet-50' : ''
+                        }`}
+                      >
+                        {/* v1.2.2 [P2] persona 头像 */}
+                        <img
+                          src={p.avatar}
+                          alt={p.label}
+                          className="w-9 h-9 rounded-full object-cover ring-1 ring-black/5 bg-zinc-100 flex-shrink-0"
+                          onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3' }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-zinc-800 flex items-center gap-2">
+                            <span>{p.label}</span>
+                            {persona === p.value && <CheckCircle2 size={12} className="text-violet-500" />}
+                          </span>
+                          <span className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{p.desc}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -908,15 +942,26 @@ export default function ChatPage() {
                 </button>
               )}
             </div>
+            {/* v1.1.10 [P0] 新建对话按钮 — 之前没有显式入口, 用户只能刷新页面才能断掉旧上下文 */}
+            <button
+              onClick={handleNewConversation}
+              disabled={sending}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 border border-black/10 rounded-full text-xs font-medium text-zinc-600 hover:bg-zinc-200 transition-colors disabled:opacity-50"
+              title="开一个全新的对话 (不带历史上下文)"
+            >
+              <Plus size={12} />
+              新对话
+            </button>
             <div className="text-xs text-zinc-400 hidden sm:block">
-              v0.1.7+ · 切换 tab 不带上下文
+              v1.1.10 · 每个 tab 独立上下文
             </div>
           </div>
         </div>
 
         {/* v2.0: 搜索结果下拉 */}
         {searchOpen && (
-          <div className="absolute right-6 mt-1 bg-white border border-black/10 rounded-2xl shadow-xl z-20 w-[28rem] max-w-[calc(100vw-3rem)] max-h-[28rem] overflow-y-auto overflow-hidden">
+          /* v1.1.10 [P0] z-20 → z-50 (跟 persona dropdown 同级, 互相不遮) + 限高 */
+          <div className="absolute right-6 mt-1 bg-white border border-black/10 rounded-2xl shadow-xl z-50 w-[28rem] max-w-[calc(100vw-3rem)] max-h-[min(70vh,32rem)] overflow-y-auto overscroll-contain">
             {/* scenario chip 过滤 */}
             <div className="flex items-center gap-1.5 px-3 py-2 border-b border-black/5 bg-zinc-50/60 flex-wrap">
               <span className="text-xs text-zinc-500">场景:</span>
@@ -1249,12 +1294,19 @@ export default function ChatPage() {
                         <button
                           key={p.value}
                           onClick={() => toggleTeamPersona(p.value)}
-                          className={`px-2.5 py-1 text-xs rounded-full border transition-colors flex items-center gap-1 ${
+                          className={`pl-1 pr-2.5 py-1 text-xs rounded-full border transition-colors flex items-center gap-1.5 ${
                             sel
                               ? 'bg-amber-600 text-white border-amber-600'
                               : 'bg-white border-amber-300 text-amber-800 hover:bg-amber-100'
                           }`}
                         >
+                          {/* v1.2.2 [P2] 团队模式 chip 加头像 */}
+                          <img
+                            src={p.avatar}
+                            alt=""
+                            className={`w-5 h-5 rounded-full object-cover ${sel ? 'ring-1 ring-white/40' : 'ring-1 ring-amber-200'}`}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                          />
                           <span>{p.label}</span>
                           {sel && <CheckCircle2 size={11} />}
                         </button>
@@ -1318,6 +1370,15 @@ export default function ChatPage() {
                         return (
                           <div key={subId} className="bg-white border border-zinc-200 rounded-lg p-3">
                             <div className="flex items-center gap-2 mb-1.5">
+                              {/* v1.2.2 [P2] sub-agent 头像 */}
+                              {pEntry && (
+                                <img
+                                  src={pEntry.avatar}
+                                  alt=""
+                                  className="w-6 h-6 rounded-full object-cover ring-1 ring-black/5 bg-zinc-100"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                />
+                              )}
                               <span className="text-xs font-semibold text-zinc-800">{pEntry?.label || s.persona}</span>
                               {s.latency_ms != null && (
                                 <span className="text-[10px] text-zinc-500 ml-auto flex items-center gap-1">

@@ -1,6 +1,7 @@
-@echo off
+﻿@echo off
+chcp 65001 >nul
 REM ===========================================
-REM   LocalAgent v1.1.9 - One-Click Launcher
+REM   LocalAgent v1.2.2 - One-Click Launcher
 REM   PURE ASCII — no Chinese chars in this file.
 REM   Why: cmd.exe default codepage is GBK on Chinese Windows;
 REM         if this file is saved as UTF-8 (no BOM), every Chinese
@@ -19,7 +20,7 @@ set "PSMSG=powershell -NoProfile -Command "Write-Host""
 
 echo.
 echo ============================================================
-echo   学习智囊团 v1.1.9  (本地化 AI Agent 平台) - 张雪峰Agent fork
+echo   学习智囊团 v1.2.2  (本地化 AI Agent 平台) - 张雪峰Agent fork
 echo ============================================================
 echo.
 
