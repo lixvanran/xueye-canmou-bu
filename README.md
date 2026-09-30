@@ -194,9 +194,8 @@ LocalAgent/
 
 - v0.9.x：核心场景 + 讲题工作流 + 长期事实抽取
 - v1.0.x：一键启动 + 知识库集成
-- v1.1.x：API Key 前端配置 + 项目清理
-- **v0.1.6**：5 页面架构（今日 / 会话 / 日程 / 资料库 / 画像）+ 会话防串台 + nuwa-skill 框架 + 个人画像精简 + 错题知识图谱 + 历史搜索 + 数据导出导入
-- **v0.1.7（参赛核心）**：Agent 完整运行过程可视化（8 步骤 trace 面板）+ 多角色实际接入（张雪峰 / 学姐 / 段子手 三种 persona，persona 真正生效到 system prompt）+ 画像可视化（学情雷达 SVG + 学习轨迹图）+ persona/agent_name 联动修复 + embedding 403 circuit breaker + schedule/toggle 真 toggle + api-key/test 可测当前 key + classifier markdown fence 解析 + ChatPage 切 tab 清 trace。修复下属测试 6 P0 + 4 P1。
+- **v1.1.6**：5 页面架构（今日 / 会话 / 日程 / 资料库 / 画像）+ 会话防串台 + nuwa-skill 框架 + 个人画像精简 + 错题知识图谱 + 历史搜索 + 数据导出导入
+- **v1.1.7**：Agent 完整运行过程可视化（8 步骤 trace 面板）+ 多角色实际接入（张雪峰 / 学姐 / 段子手 三种 persona，persona 真正生效到 system prompt）+ 画像可视化（学情雷达 SVG + 学习轨迹图）+ persona/agent_name 联动修复 + embedding 403 circuit breaker + schedule/toggle 真 toggle + api-key/test 可测当前 key + classifier markdown fence 解析 + ChatPage 切 tab 清 trace。修复下属测试 6 P0 + 4 P1。
 - **v1.1.9**：项目改名「学习智囊团 → 学业参谋部」+ 启动.bat 重写修 cmd 中文乱码 bug + 自动检测 Python/Node + winget 自动装
 - **v1.1.10**：5 P0 修复（persona dropdown 图层层级 / 快速模式 10s→2s 提速 / 切 tab 对话记忆串台 / 切页中断 Agent / 历史版本号残留）+ 版本全套同步
 - **v1.1.11**：16 个 persona 全部加上 AI 生成的 Pixar 风肖像（ChatPage dropdown + trigger + 团队 chip + sub-agent 卡片全集成）+ 课间解压游戏（嵌入张雪峰快跑 + 高一必修一背诵 28 条知识点，只加不减）+ GamePage 新页面（侧栏画像与设置之间）
