@@ -20,7 +20,7 @@ set "PSMSG=powershell -NoProfile -Command "Write-Host""
 
 echo.
 echo ============================================================
-echo   学习智囊团 v1.2.2  (本地化 AI Agent 平台) - 张雪峰Agent fork
+echo   学习智囊团 v1.2.2  (16 persona + 张雪峰快跑游戏 + 高一必修一背诵)
 echo ============================================================
 echo.
 

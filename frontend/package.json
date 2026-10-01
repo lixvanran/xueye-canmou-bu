@@ -3,7 +3,7 @@
   "productName": "LocalAgent",
   "private": true,
   "version": "1.2.2",
-  "description": "LocalAgent - 本地化 AI Agent 平台 (参赛 v0.1.7)",
+  "description": "学业参谋部 v1.2.2 - 本地化 AI 参谋: 16 persona + 张雪峰快跑游戏 + 高一必修一背诵",
   "author": "Mavis",
   "main": "electron/main.cjs",
   "scripts": {
