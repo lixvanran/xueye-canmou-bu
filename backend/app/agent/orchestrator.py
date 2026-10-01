@@ -164,7 +164,7 @@ class AgentOrchestrator:
         stop_event: Optional[asyncio.Event] = None,
     ) -> AsyncGenerator[str, None]:
         """流式处理 - SSE 增量输出
-        v0.1.7 (参赛): 加 [START] / [END] 事件 + 每步 timing, 让前端能拼完整时间线"""
+        v0.1.7: 加 [START] / [END] 事件 + 每步 timing, 让前端能拼完整时间线"""
         import time as _time
 
         run_started = _time.time()

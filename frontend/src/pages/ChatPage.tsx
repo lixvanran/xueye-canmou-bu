@@ -1621,7 +1621,7 @@ export default function ChatPage() {
   )
 }
 
-// ===== v0.1.7: Agent 完整运行过程可视化面板 (参赛核心展示) =====
+// ===== v0.1.7: Agent 完整运行过程可视化面板 =====
 function AgentTracePanel({ trace, liveTrace }: { trace: any; liveTrace: any }) {
   const t = liveTrace || trace || {}
   const [expanded, setExpanded] = useState(true)  // v0.1.7+: 默认展开, 让用户直接看到 trace
