@@ -20,12 +20,6 @@ from app.agent.tools.workspace import (
     workspace_list, workspace_read, workspace_write,
     workspace_search, workspace_delete, workspace_info,
 )
-from app.agent.tools.wrong_book import (
-    wrong_book_scan_uploads,         # v0.9.1 新增
-    wrong_book_describe_file,        # v0.9.1 新增
-    wrong_book_add_mistake,          # v0.9.1 新增
-    wrong_book_query,                # v0.9.1 新增
-)
 from app.agent.tools.schedule import (  # v2.0 新增 — 日程/学习计划
     create_schedule, delete_schedule, list_schedule,
     update_schedule, suggest_schedule,
@@ -59,11 +53,6 @@ TOOL_REGISTRY: Dict[str, Callable[..., Awaitable[Dict]]] = {
     "workspace_search": workspace_search,
     "workspace_delete": workspace_delete,
     "workspace_info": workspace_info,
-    # ===== v0.9.1 错题本工具 =====
-    "wrong_book_scan_uploads": wrong_book_scan_uploads,
-    "wrong_book_describe_file": wrong_book_describe_file,
-    "wrong_book_add_mistake": wrong_book_add_mistake,
-    "wrong_book_query": wrong_book_query,
     # ===== v2.0 日程/学习计划 =====
     "create_schedule": create_schedule,
     "delete_schedule": delete_schedule,

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>张雪峰快跑小游戏｜在线跑酷、排行榜与好友PK</title>
+    <meta name="description" content="张雪峰快跑是一款免费的在线跑酷小游戏。控制角色跳跃、下蹲躲避巧乐兹和雪碧瓶，挑战全球排行榜，还可添加好友进行在线PK。手机和电脑浏览器打开即玩。">
+    <meta name="keywords" content="张雪峰,张雪峰快跑,张雪峰小游戏,张雪峰跑酷,跑酷小游戏,在线小游戏,网页小游戏,休闲小游戏,好友PK">
+    <meta name="author" content="小Y">
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+    <meta name="theme-color" content="#07111f">
+    <link rel="canonical" href="https://zxf.yzzwnw.asia/">
+    <link rel="alternate" hreflang="zh-CN" href="https://zxf.yzzwnw.asia/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:site_name" content="张雪峰快跑">
+    <meta property="og:title" content="张雪峰快跑小游戏｜在线跑酷、排行榜与好友PK">
+    <meta property="og:description" content="免费在线玩张雪峰快跑：跳跃、下蹲躲避障碍，挑战排行榜，并与好友在线PK。">
+    <meta property="og:url" content="https://zxf.yzzwnw.asia/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="张雪峰快跑小游戏">
+    <meta name="twitter:description" content="打开浏览器即可玩的在线跑酷小游戏，支持全球排行榜和好友PK。">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://zxf.yzzwnw.asia/#website",
+          "url": "https://zxf.yzzwnw.asia/",
+          "name": "张雪峰快跑",
+          "alternateName": ["张雪峰快跑小游戏", "张雪峰小游戏", "张雪峰跑酷"],
+          "description": "支持排行榜和好友PK的免费在线跑酷小游戏。",
+          "inLanguage": "zh-CN"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://zxf.yzzwnw.asia/#game",
+          "name": "张雪峰快跑小游戏",
+          "alternateName": ["张雪峰快跑", "张雪峰跑酷"],
+          "url": "https://zxf.yzzwnw.asia/",
+          "description": "控制角色跳跃和下蹲，躲避巧乐兹与雪碧瓶，挑战全球排行榜并与好友在线PK。",
+          "applicationCategory": "GameApplication",
+          "applicationSubCategory": "跑酷小游戏",
+          "operatingSystem": "Web Browser",
+          "browserRequirements": "Requires JavaScript and HTML5 Canvas support",
+          "inLanguage": "zh-CN",
+          "isAccessibleForFree": true,
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "CNY"
+          },
+          "featureList": ["在线跑酷", "全球排行榜", "好友系统", "随机PK", "好友PK", "手机触控"]
+        }
+      ]
+    }
+    </script>
+    <link rel="preload" href="assets/zhang-runner-v2.webp" as="image" type="image/webp" fetchpriority="high">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="page-shell">
+        <!-- 游戏修改器面板 -->
+        <div class="modifier-panel" id="modifierPanel">
+            <div class="panel-header" id="modifierToggle">
+                <span class="panel-title">游戏修改器</span>
+                <span class="panel-hint">（使用修改器不计入纯净排行）</span>
+                <span class="toggle-arrow">▼</span>
+            </div>
+            <div class="panel-body" id="modifierBody">
+                <div class="modifier-row">
+                    <label class="modifier-label">速度</label>
+                    <div class="modifier-options" data-key="speedMult">
+                        <button class="mod-option" data-value="0.5">0.5x</button>
+                        <button class="mod-option active" data-value="1">1x</button>
+                        <button class="mod-option" data-value="1.5">1.5x</button>
+                        <button class="mod-option" data-value="2">2x</button>
+                    </div>
+                </div>
+                <div class="modifier-row">
+                    <label class="modifier-label">密度</label>
+                    <div class="modifier-options" data-key="densityMult">
+                        <button class="mod-option" data-value="0.5">稀疏</button>
+                        <button class="mod-option active" data-value="1">正常</button>
+                        <button class="mod-option" data-value="1.5">密集</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <main class="game-shell" aria-label="张雪峰快跑">
+            <div class="hud" aria-live="polite">
+                <div class="hud-left">
+                    <button id="settingsButton" class="settings-button" type="button" aria-label="设置">⚙</button>
+                    <div class="hud-title">张雪峰快跑</div>
+                    <button id="nicknameDisplay" class="nickname-display" type="button" title="查看个人中心"></button>
+                </div>
+                <div class="score-wrap" id="hudScoreWrap">
+                    <span id="score">00000</span>
+                    <span id="best">BEST 00000</span>
+                </div>
+                <div class="hud-right">
+                    <span id="pkHudInfo" class="pk-hud-info hidden"></span>
+                    <button id="pkButton" class="pk-button" type="button" aria-label="PK对战">PK对战</button>
+                    <button id="helpButton" class="help-button" type="button" aria-label="游戏说明">?</button>
+                </div>
+            </div>
+            <div class="canvas-stage">
+                <canvas id="game" width="1024" height="576"></canvas>
+
+                <!-- 倒计时层 -->
+                <div id="countdownOverlay" class="countdown-overlay hidden">
+                    <span id="countdownText" class="countdown-text">3</span>
+                </div>
+
+                <div id="overlay" class="overlay">
+                    <h1>张雪峰快跑</h1>
+                    <p id="overlayText">长按跳更高，按 ↓ 下蹲躲避雪碧<br>点击按钮或按空格开始游戏</p>
+                    <button id="startButton" type="button">开始游戏</button>
+                </div>
+            </div>
+
+            <!-- 设置面板 -->
+            <div id="settingsModal" class="settings-modal hidden">
+                <div class="settings-backdrop"></div>
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <span class="settings-card-title">游戏设置</span>
+                        <span class="settings-pause-badge" id="pauseBadge">已暂停</span>
+                    </div>
+                    <div class="settings-card-body">
+                        <div class="settings-section">
+                            <h3>音效设置</h3>
+                            <div class="settings-row">
+                                <span>背景音乐</span>
+                                <div class="volume-control">
+                                    <input type="range" id="bgmVolume" min="0" max="100" value="50">
+                                    <span class="volume-value" id="bgmVolumeLabel">50%</span>
+                                </div>
+                            </div>
+                            <div class="settings-row">
+                                <span>音效</span>
+                                <div class="volume-control">
+                                    <input type="range" id="sfxVolume" min="0" max="100" value="90">
+                                    <span class="volume-value" id="sfxVolumeLabel">90%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-actions">
+                            <button id="restartButton" class="settings-btn restart-btn" type="button">重新开始</button>
+                            <button id="resumeButton" class="settings-btn resume-btn" type="button">继续游戏</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 帮助弹窗 -->
+            <div id="helpModal" class="help-modal hidden">
+                <div class="help-backdrop"></div>
+                <div class="help-card">
+                    <div class="help-card-header">
+                        <span class="help-card-title">🎮 游戏规则</span>
+                        <button id="helpClose" class="help-close" type="button">&times;</button>
+                    </div>
+                    <div class="help-card-body">
+                        <div class="help-section">
+                            <h3>🎯 游戏目标</h3>
+                            <p>控制张雪峰在跑步机上不断奔跑，尽可能跑得更远。<br>前方会随机出现障碍物，碰到障碍物则游戏结束。</p>
+                        </div>
+                        <div class="help-section">
+                            <h3>⌨️ 操作方式</h3>
+                            <p><kbd>空格</kbd> / <kbd>↑</kbd> / 点击屏幕 / 点击"跳跃"按钮 → <strong>跳跃</strong></p>
+                            <p><kbd>↓</kbd> / 点击"下蹲"按钮 → <strong>下蹲</strong></p>
+                            <p>💡 <strong>长按跳跃键</strong>可以跳得更高，适合躲避高空的雪碧瓶</p>
+                            <p>💡 <strong>空中按下蹲</strong>可快速落地，反应更快</p>
+                        </div>
+                        <div class="help-section">
+                            <h3>🧱 障碍物说明</h3>
+                            <p>🍦 <strong>巧乐兹（地面）</strong>：只能跳跃躲避，下蹲无效</p>
+                            <p>🥤 <strong>雪碧瓶（空中）</strong>：分三种高度 — 低空需下蹲 / 中空需跳跃 / 高空需跳跃</p>
+                            <p>⚠️ 随着分数增加，障碍物出现越来越频繁，速度越来越快</p>
+                        </div>
+                        <div class="help-section">
+                            <h3>⚙️ 游戏修改器</h3>
+                            <p>顶部面板可调节 <strong>速度倍率</strong> 和 <strong>障碍密度</strong></p>
+                            <p>⚠️ 使用修改器后的成绩<strong>不会计入纯净排行榜</strong></p>
+                        </div>
+                        <div class="help-section">
+                            <h3>🏆 排行榜</h3>
+                            <p><strong>纯净榜</strong>：不使用修改器、非PK模式的原始成绩</p>
+                            <p><strong>全部榜</strong>：所有成绩（含修改器和PK）</p>
+                            <p>游戏结束后自动提交分数，可在右侧面板查看排行</p>
+                        </div>
+                        <div class="help-section">
+                            <h3>⚔️ PK 对战</h3>
+                            <p>点击 HUD 中的 <strong>PK对战</strong> 按钮随机匹配在线玩家</p>
+                            <p>通过 <strong>个人中心 → 好友列表</strong> 可与好友对战</p>
+                            <p>对手会以半透明幽灵形象出现在你的赛道上</p>
+                            <p>先撞到障碍物的一方为败方，存活更久者获胜</p>
+                        </div>
+                        <div class="help-section">
+                            <h3>👤 个人中心 &amp; 好友</h3>
+                            <p>点击昵称进入个人中心，可修改昵称、查看ID</p>
+                            <p>将你的 <strong>唯一ID</strong> 分享给朋友，即可互相添加好友</p>
+                            <p>好友之间可直接发起 PK，无需等待匹配</p>
+                        </div>
+                        <div class="help-warning">
+                            ⚠️ <strong>新手请注意：游戏开始前请仔细阅读以上规则！</strong><br>
+                            了解障碍物类型和操作技巧能帮助你跑得更远。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PK 匹配等待弹窗 -->
+            <div id="pkMatchmakingOverlay" class="pk-matchmaking-overlay hidden">
+                <div class="pk-matching-card">
+                    <div class="pk-spinner"></div>
+                    <p id="pkMatchmakingText">正在匹配对手...</p>
+                    <button id="pkCancelButton" class="pk-cancel-btn" type="button">取消匹配</button>
+                </div>
+            </div>
+
+            <!-- PK 找到对手弹窗 -->
+            <div id="pkMatchFoundOverlay" class="pk-match-found-overlay hidden">
+                <div class="pk-match-found-card">
+                    <p id="pkMatchFoundText">找到对手!</p>
+                </div>
+            </div>
+
+            <!-- 好友 PK 邀请确认弹窗 -->
+            <div id="pkInviteOverlay" class="pk-invite-overlay hidden">
+                <div class="pk-invite-card">
+                    <h2>好友 PK 邀请</h2>
+                    <p id="pkInviteText">好友邀请你进行 PK</p>
+                    <div class="pk-invite-actions">
+                        <button id="pkInviteDecline" class="pk-invite-decline" type="button">拒绝</button>
+                        <button id="pkInviteAccept" class="pk-invite-accept" type="button">接受</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PK 等待对手弹窗 -->
+            <div id="pkWaitingOverlay" class="pk-waiting-overlay hidden">
+                <div class="pk-waiting-card">
+                    <p class="pk-waiting-icon">💀</p>
+                    <p id="pkWaitingText">你已阵亡！等待对手结束比赛...</p>
+                    <div class="pk-spinner"></div>
+                    <button id="pkForceQuitBtn" class="pk-force-quit-btn" type="button">强制退出</button>
+                </div>
+            </div>
+
+            <!-- PK 比赛结果弹窗 -->
+            <div id="pkResultOverlay" class="pk-result-overlay hidden">
+                <div class="pk-result-card">
+                    <h2 id="pkResultTitle"></h2>
+                    <p id="pkResultDetail"></p>
+                    <button id="pkResultClose" class="settings-btn resume-btn" type="button">返回</button>
+                </div>
+            </div>
+
+            <!-- 个人中心弹窗 -->
+            <div id="profileModal" class="profile-modal hidden">
+                <div class="profile-backdrop"></div>
+                <div class="profile-card">
+                    <div class="profile-card-header">
+                        <span class="profile-card-title">个人中心</span>
+                        <button id="profileClose" class="help-close" type="button">&times;</button>
+                    </div>
+                    <div class="profile-card-body">
+                        <div class="profile-section">
+                            <label class="profile-label">我的ID</label>
+                            <div class="profile-id-row">
+                                <code id="profileUserId" class="profile-uid"></code>
+                                <button id="copyUserId" class="profile-copy-btn" type="button">复制</button>
+                            </div>
+                        </div>
+                        <div class="profile-section">
+                            <label class="profile-label">昵称</label>
+                            <div class="profile-nick-row">
+                                <input id="profileNicknameInput" class="profile-nick-input" type="text" maxlength="20" placeholder="输入新昵称">
+                                <button id="saveNickname" class="profile-save-btn" type="button">保存</button>
+                            </div>
+                        </div>
+                        <div class="profile-section">
+                            <label class="profile-label">最佳成绩</label>
+                            <span id="profileBestScore" class="profile-best-score">0</span>
+                        </div>
+                        <div class="profile-divider"></div>
+                        <div class="profile-section">
+                            <label class="profile-label">添加好友</label>
+                            <div class="profile-add-friend-row">
+                                <input id="addFriendInput" class="profile-add-input" type="text" placeholder="输入好友的ID">
+                                <button id="addFriendBtn" class="profile-add-btn" type="button">添加</button>
+                            </div>
+                            <p id="addFriendMsg" class="profile-add-msg hidden"></p>
+                            <p class="profile-hint">添加后可在左侧「好友列表」中查看和管理好友</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="mobile-controls" aria-label="移动端控制">
+            <button id="jumpButton" class="control-button jump-button" type="button">跳跃</button>
+            <button id="duckButton" class="control-button duck-button" type="button">下蹲</button>
+        </div>
+
+        <!-- 排行榜玩家弹窗 -->
+        <div id="playerPopup" class="player-popup hidden">
+            <div class="player-popup-backdrop"></div>
+            <div class="player-popup-card">
+                <div class="player-popup-header">
+                    <span id="popupNickname" class="popup-nickname"></span>
+                    <button id="popupClose" class="popup-close-btn" type="button">&times;</button>
+                </div>
+                <div class="player-popup-body">
+                    <p>最佳成绩: <strong id="popupBestScore">0</strong></p>
+                    <button id="popupAddFriend" class="popup-add-friend-btn" type="button">🤝 发送好友请求</button>
+                    <p id="popupMsg" class="popup-msg hidden"></p>
+                </div>
+            </div>
+        </div>
+
+        <p class="footer-link">
+            <a href="#" id="douyinLink">欢迎关注小Y</a>
+        </p>
+
+        <!-- 抖音二维码弹窗 -->
+        <div id="douyinModal" class="douyin-modal hidden">
+            <div class="douyin-backdrop"></div>
+            <div class="douyin-card">
+                <img data-src="assets/douyin-v2.webp" alt="抖音二维码" width="670" height="1000" decoding="async">
+                <button id="douyinClose" class="douyin-close" type="button">&times;</button>
+            </div>
+        </div>
+
+        <!-- 好友侧边栏 -->
+        <div class="friends-panel" id="friendsPanel">
+            <div class="panel-header" id="friendsToggle">
+                <span class="panel-title">👥 好友列表</span>
+                <span class="history-count" id="friendsOnlineCount">0</span>
+                <span class="toggle-arrow">▶</span>
+            </div>
+            <div class="panel-body hidden" id="friendsBody">
+                <div id="sidebarFriendsList" class="sidebar-friends-list">
+                    <p class="friends-empty">暂无好友</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 全球排行榜面板 -->
+        <div class="leaderboard-panel" id="leaderboardPanel">
+            <div class="panel-header" id="leaderboardToggle">
+                <span class="panel-title">全球排行榜</span>
+                <span class="history-count" id="lbCount">0</span>
+                <button id="refreshLeaderboard" class="refresh-btn" type="button" aria-label="刷新">↻</button>
+                <span class="toggle-arrow">▶</span>
+            </div>
+            <div class="panel-body hidden" id="leaderboardBody">
+                <div class="leaderboard-tabs">
+                    <button class="lb-tab active" data-pure="true" type="button">纯净榜</button>
+                    <button class="lb-tab" data-pure="false" type="button">全部</button>
+                </div>
+                <ol id="leaderboardList" class="leaderboard-list"></ol>
+            </div>
+        </div>
+
+        <!-- 本地得分记录（折叠保留） -->
+        <div class="score-history" id="scoreHistory">
+            <div class="panel-header" id="historyToggle">
+                <span class="panel-title">本地记录</span>
+                <span class="history-count" id="historyCount">0</span>
+                <span class="toggle-arrow">▶</span>
+            </div>
+            <div class="panel-body hidden" id="historyBody">
+                <ol id="historyList" class="history-list"></ol>
+                <button id="clearHistory" class="clear-history-btn">清除记录</button>
+            </div>
+        </div>
+
+        <section class="seo-intro" aria-labelledby="seoIntroTitle">
+            <p class="seo-kicker">免费在线网页游戏</p>
+            <h2 id="seoIntroTitle">张雪峰快跑：打开浏览器就能玩的跑酷小游戏</h2>
+            <p>《张雪峰快跑》是一款支持手机和电脑的在线跑酷小游戏。玩家通过跳跃和下蹲躲避巧乐兹、雪碧瓶等障碍物，在不断加速的跑步机上挑战更高分数。</p>
+            <div class="seo-feature-grid">
+                <div><strong>简单操作</strong><span>空格、方向键或手机触控即可开始张雪峰快跑。</span></div>
+                <div><strong>在线排行</strong><span>查看全球排行榜，比较纯净成绩和全部成绩。</span></div>
+                <div><strong>好友PK</strong><span>添加好友或随机匹配，进行实时在线跑酷对战。</span></div>
+            </div>
+            <p class="seo-disclaimer">本项目是娱乐向网页小游戏，与任何真实人物、品牌或机构不存在官方关联，也不提供升学、就业或专业选择建议。</p>
+        </section>
+    </div>
+
+    <script src="js/config.js" defer></script>
+    <script src="js/analytics.js" defer></script>
+    <script src="js/game.js" defer></script>
+    <script src="js/renderer.js" defer></script>
+    <script src="js/input.js" defer></script>
+    <script src="js/api-client.js" defer></script>
+    <script src="js/main.js" defer></script>
+</body>
+</html>

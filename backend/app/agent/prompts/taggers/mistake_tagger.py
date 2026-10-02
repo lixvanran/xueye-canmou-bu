@@ -2,7 +2,6 @@
 - 用 LLM 给错题打 3-5 个细粒度知识点标签 + 难度等级
 - 调用入口:
     - POST /api/resources/create (type=mistake) 时自动触发 (resources.py)
-    - wrong_book_add_mistake 工具里 (agent/tools/wrong_book.py)
     - 前端"重新分析"按钮 (POST /api/resources/{id}/retag, 见 resources.py)
 - 失败兜底: 返回空 tags + difficulty=3, **绝不抛异常**
 
