@@ -73,3 +73,4 @@ LocalAgent-v*.zip
 # 本地打包的 zip (21MB, 走 GitHub Release 分享)
 学业参谋部_v*.zip
 *.local.zip
+scripts/repack_v111.py
