@@ -12,7 +12,7 @@ from typing import Dict, AsyncGenerator, List, Tuple, Optional
 from app.agent.llm import llm_client, deep_thinking_client
 from app.agent.prompts import TOOLS
 from app.agent.tools import execute_tool
-from app.agent.pipeline.postprocessor import sanitize_llm_output
+from app.agent.pipeline.postprocessor import sanitize_llm_output, strip_think_block, ThinkTagStripper
 
 logger = logging.getLogger(__name__)
 
@@ -35,19 +35,31 @@ async def _do_chat_with_models(
 ) -> Dict:
     """按 [primary, *fallback] 顺序调 LLM, 成功就返回
     跟 LLMClient.chat() 类似, 但 primary 是动态传入的
+
+    v1.2.3: 成功时回填 "model"; 全部失败时 "model"=None 且带 "error"/
+    "failed_models"。之前失败也返回 primary 名字, 上层据此上报
+    "model_used", 遥测会把失败报成成功。
     """
     last_err: Optional[Exception] = None
+    failed: List[str] = []
     models = [primary] + [m for m in fallback if m != primary]
     for m in models:
         try:
-            return await llm_client._do_chat(m, messages, tools)
+            resp = await llm_client._do_chat(m, messages, tools)
+            resp["model"] = m
+            resp["content"] = strip_think_block(resp.get("content", ""))
+            return resp
         except Exception as e:
             logger.warning(f"_do_chat_with_models: {m} failed: {e}")
             last_err = e
+            failed.append(m)
     return {
         "content": llm_client._fallback_response(last_err or Exception("all failed")),
         "tool_calls": None,
         "finish_reason": "error",
+        "model": None,
+        "error": str(last_err) if last_err else "all models failed",
+        "failed_models": failed,
     }
 
 
@@ -57,12 +69,16 @@ async def _do_stream_with_models(
     messages: List[Dict],
     tools: Optional[list] = None,
     stop_event: Optional[asyncio.Event] = None,
+    status: Optional[Dict] = None,
 ) -> AsyncGenerator[str, None]:
     """流式版本 - 按 [primary, *fallback] 顺序
     v0.8.0+: stop_event - 用户 Stop 按钮 set 后, 每个 chunk 之前 yield 之前 check
+    v1.2.3: status 出参 - 回填成功用的模型 / 失败清单, 供上层如实上报
     """
     models = [primary] + [m for m in fallback if m != primary]
     tried = set()
+    failed: List[str] = []
+    last_err: Optional[Exception] = None
     for m in models:
         if m in tried:
             continue
@@ -85,11 +101,21 @@ async def _do_stream_with_models(
                     return  # 静默退出, 让上层 run_llm_stream 看到完整 content 后 yield stopped
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
+            if status is not None:
+                status["model"] = m
+                status["failed_models"] = failed
             return
         except Exception as e:
             logger.warning(f"stream {m} failed: {e}")
+            last_err = e
+            failed.append(m)
             continue
-    yield llm_client._fallback_response(Exception("all stream failed"))
+    if status is not None:
+        status["model"] = None
+        status["failed_models"] = failed
+        status["error"] = str(last_err) if last_err else "all stream models failed"
+    # v1.2.3: 把真实异常传给降级文案, 否则永远走"后端服务有点问题"的通用分支
+    yield llm_client._fallback_response(last_err or Exception("all stream failed"))
 
 
 # ===== 公共入口 =====
@@ -177,8 +203,8 @@ async def run_llm_with_tools(
         model_used = deep_thinking_client.model
     else:
         response = await _do_chat_with_models(primary, fallback, messages, tools=TOOLS)
-        # 实际用到的模型, 这里简化: 取 primary (出错时 fallback 链中的)
-        model_used = primary
+        # v1.2.3: 实际用到的模型由 _do_chat_with_models 如实回填 (全失败时为 None)
+        model_used = response.get("model")
 
     tool_calls_log: List[Dict] = []
     if response.get("tool_calls"):
@@ -256,7 +282,8 @@ async def run_llm_stream(
         model_used = deep_thinking_client.model
     else:
         response = await _do_chat_with_models(primary, fallback, messages, tools=TOOLS)
-        model_used = primary
+        # v1.2.3: 如实上报 (全失败时为 None, 由上层标成失败)
+        model_used = response.get("model")
 
     if stop_event is not None and stop_event.is_set():
         yield ("stopped", "用户中途叫停 (LLM 返回答前)")
@@ -317,15 +344,29 @@ async def run_llm_stream(
                 return
     else:
         # 包装 _do_stream_with_models 支持 stop_event
-        async for chunk in _do_stream_with_models(primary, fallback, messages, stop_event=stop_event):
+        # v1.2.3: status 回填真实结果 + ThinkTagStripper 剥离内联 <think> 推理
+        stream_status: Dict = {}
+        stripper = ThinkTagStripper()
+        async for chunk in _do_stream_with_models(
+            primary, fallback, messages, stop_event=stop_event, status=stream_status
+        ):
             chunk_counter += 1
             if stop_event is not None and stop_event.is_set():
                 yield ("stopped", "用户中途叫停 (主链路流中)")
                 return
-            full_content += chunk
-            clean = sanitize_llm_output(chunk)
+            visible = stripper.feed(chunk)
+            if not visible:
+                continue
+            full_content += visible
+            clean = sanitize_llm_output(visible)
             if clean:
                 yield ("content", clean)
+        stripper.flush()
+        # v1.2.3: 流式阶段如果模型全挂了, model_used 置 None, 不要再报 primary
+        if stream_status.get("model"):
+            model_used = stream_status["model"]
+        else:
+            model_used = None
 
     # 4) 处理 [THINKING]...[/THINKING] 包埋
     import re

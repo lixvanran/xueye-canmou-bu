@@ -1,4 +1,4 @@
-# 学业参谋部 v1.2.2
+# 学业参谋部 v1.2.3
 
 > **Fork 声明**：本项目是 [ZhangXuefeng-Agent](https://github.com/lixvanran/ZhangXuefeng-Agent) 的 fork。  
 > 分叉点：`v0.9.8`（commit `fdfd1ee`）。  
@@ -188,7 +188,7 @@ LocalAgent/
 
 ## 版本说明
 
-当前版本 v1.2.2。开发采用迭代式小版本演进，每个版本聚焦一个改进点。
+当前版本 v1.2.3。开发采用迭代式小版本演进，每个版本聚焦一个改进点。
 
 已知版本演进：
 
@@ -200,6 +200,17 @@ LocalAgent/
 - **v1.1.10**：5 P0 修复（persona dropdown 图层层级 / 快速模式 10s→2s 提速 / 切 tab 对话记忆串台 / 切页中断 Agent / 历史版本号残留）+ 版本全套同步
 - **v1.1.11**：16 个 persona 全部加上 AI 生成的 Pixar 风肖像（ChatPage dropdown + trigger + 团队 chip + sub-agent 卡片全集成）+ 课间解压游戏（嵌入张雪峰快跑 + 高一必修一背诵 28 条知识点，只加不减）+ GamePage 新页面（侧栏画像与设置之间）
 - **v1.2.2**：启动.bat 编码修复（加 chcp 65001 + UTF-8 BOM）+ OpenRouter key 替换 + 后端滚回 v1.1.9 仅换 key
+- **v1.2.3**：3 个 P0 修复（真实 LLM 端到端验证）——
+  1. **全模型失败不再被报成成功**：以前所有模型挂掉时 `model_used` 仍然上报 primary 模型名，
+     前端 8 步 trace 面板显示绿色"LLM 完成"，实际上一条回答都没生成。现在失败时
+     `model_used=null` + `failed=true`，trace 面板标红显示"LLM 失败 / 全部模型调用失败"。
+  2. **剥离内联 `<think>` 推理块**：MiniMax-M3 / GLM-5.x 等模型把 reasoning 内联在 content 里返回，
+     以前会直接漏进聊天气泡（用户能看到 `<think>用户…</think>` 原文）。现在后端统一剥离。
+  3. **错误文案按根因分流**：以前 `400 unknown model` 会落到通用分支，叫用户"重启 启动.bat"——
+     而模型名不匹配重启多少次都没用。现在会直指"模型名要跟服务商对得上"，
+     并说明档位模型实际在 `backend/app/agent/routing/model_whitelist.py` 里改
+     （`.env` 的 `TIER_MODEL_*` 当前不生效，路由只认白名单）。
+  另附 `backend/tests/test_v123_regression.py`（28 项断言）—— 仓库此前没有自动化测试。
 
 详细变更见各 commit message。
 

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "LocalAgent"
-    APP_VERSION: str = "1.2.2"  # v1.2.2: 前端 5 P0 + 16 头像 + 课间解压 (后端滚回 v1.1.9, 仅换 key)
+    APP_VERSION: str = "1.2.3"  # v1.2.3: P0 修复 — 全模型失败不再谎报成功 / 剥离内联 <think> 推理 / 错误文案分流
     DEBUG: bool = True
 
     # Server
