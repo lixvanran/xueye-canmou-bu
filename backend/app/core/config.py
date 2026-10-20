@@ -8,6 +8,11 @@ from typing import Optional
 
 # Force .env to take priority over system env vars
 def _load_env_files():
+    # v1.2.4: 测试/CI 时跳过 .env —— 否则测试会读到开发者本机的 .env,
+    # 同一份代码在不同机器上跑出不同结果 (provider 识别就是最典型的例子)。
+    # conftest.py 会设 XUYE_SKIP_DOTENV=1。
+    if os.environ.get("XUYE_SKIP_DOTENV"):
+        return
     base = Path(__file__).resolve().parent.parent.parent
     project_root = base.parent
     for fp in [project_root / ".env", base / ".env"]:
@@ -22,7 +27,7 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "LocalAgent"
-    APP_VERSION: str = "1.2.3"  # v1.2.3: P0 修复 — 全模型失败不再谎报成功 / 剥离内联 <think> 推理 / 错误文案分流
+    APP_VERSION: str = "1.2.4"  # v1.2.4: 工程稳定性 — provider 感知白名单 / key 校验跟随 base_url / 日程工具 schema 补全 / CI + 39 项测试
     DEBUG: bool = True
 
     # Server
@@ -75,12 +80,16 @@ class Settings(BaseSettings):
     #   (全 region 限), 但能调 xAI Grok 全系列 (用户 2026-07-28 改用 Grok 4.20 MA)
     # HIGH 档触发条件 (用户规则 2026-07-28): 手动开深度思考 AND 任务分类为 high → high
     #   缺一不可: 没开深度思考 → 最多 mid
-    TIER_MODEL_LOW: str = "minimax/minimax-m3"
-    TIER_FALLBACK_LOW: str = "minimax/minimax-m2.7,z-ai/glm-4.5-air,deepseek/deepseek-chat-v3.1"
-    TIER_MODEL_MEDIUM: str = "z-ai/glm-5.2"
-    TIER_FALLBACK_MEDIUM: str = "minimax/minimax-m2.7,z-ai/glm-5-turbo,deepseek/deepseek-chat-v3.1"
-    TIER_MODEL_HIGH: str = "x-ai/grok-4.20-multi-agent"
-    TIER_FALLBACK_HIGH: str = "x-ai/grok-4.20,x-ai/grok-4.5,z-ai/glm-5.2,z-ai/glm-5-turbo,minimax/minimax-m2.7,deepseek/deepseek-chat-v3.1"
+    # v1.2.4: 这三个改成"显式覆盖"语义 —— 留空 = 用 provider 默认 (由
+    # LLM_BASE_URL 自动识别 provider 后取对应白名单)。
+    # 之前这里是死配置: tier_router 只认 model_whitelist.py, 从不读这里,
+    # 用户改了 .env 静默无效。
+    TIER_MODEL_LOW: str = ""
+    TIER_FALLBACK_LOW: str = ""
+    TIER_MODEL_MEDIUM: str = ""
+    TIER_FALLBACK_MEDIUM: str = ""
+    TIER_MODEL_HIGH: str = ""
+    TIER_FALLBACK_HIGH: str = ""
     # 分类用模型 (默认用 low 档, 越便宜越好)
     TIER_CLASSIFY_MODEL: str = "minimax/minimax-m3"
     # 复杂度分类专用模型 — 用 minimaxM3 (轻量便宜中文强, 适合分类)

@@ -12,8 +12,9 @@ from pydantic import BaseModel
 from app.db.database import get_db, UserPreferenceORM
 from app.core.config import settings
 from app.agent.routing.model_whitelist import (
-    MODEL_WHITELIST,
-    DEFAULT_TIER_MODELS,
+    get_whitelist,
+    get_default_tier_models,
+    describe_active,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class ModelSettings(BaseModel):
 
 
 class UsageResponse(BaseModel):
-    """OpenRouter 余额/消费"""
+    """LLM 余额/消费 (OpenRouter 才有余额, 其他 provider 走 message 提示)"""
     ok: bool
     email: Optional[str] = None
     is_free_tier: Optional[bool] = None
@@ -45,6 +46,8 @@ class UsageResponse(BaseModel):
     limit_remaining: Optional[float] = None  # 剩余额度 ($)
     usage: Optional[float] = None         # 已用 ($)
     error: Optional[str] = None
+    error_code: Optional[int] = None      # v1.2.4: 透传 HTTP 状态码
+    message: Optional[str] = None         # v1.2.4: 非 OpenRouter 时的说明
 
 
 # ===== 工具函数 =====
@@ -70,14 +73,20 @@ def _set_pref(db: Session, user_id: int, key: str, value):
 
 
 def _validate_model_in_whitelist(tier: str, model: str) -> None:
-    """校验模型在白名单内, 不在就 raise"""
-    if tier not in MODEL_WHITELIST:
+    """校验模型在当前 provider 白名单内, 不在就 raise
+
+    v1.2.4: 白名单按 provider 走 (openrouter / minimax / deepseek / 智谱 / 硅基流动),
+    不再写死 OpenRouter 的 model id。
+    """
+    if tier not in ("low", "medium", "high"):
         raise HTTPException(400, f"未知档位: {tier}")
-    allowed = MODEL_WHITELIST[tier]
+    allowed = get_whitelist(tier)
     if model not in allowed:
+        provider = describe_active()["provider_label"]
         raise HTTPException(
             400,
-            f"模型 {model} 不在 {tier} 档白名单内. 允许: {', '.join(allowed)}"
+            f"模型 {model} 不在 {tier} 档白名单内 (当前服务商: {provider}). "
+            f"允许: {', '.join(allowed)}"
         )
 
 
@@ -87,13 +96,13 @@ def _validate_model_in_whitelist(tier: str, model: str) -> None:
 async def get_model_settings(user_id: int = 1, db: Session = Depends(get_db)):
     """获取模型设置: 白名单 + 默认 + 当前选择"""
     current = {
-        "low": _get_pref(db, user_id, "model_low", DEFAULT_TIER_MODELS["low"]),
-        "medium": _get_pref(db, user_id, "model_medium", DEFAULT_TIER_MODELS["medium"]),
-        "high": _get_pref(db, user_id, "model_high", DEFAULT_TIER_MODELS["high"]),
+        "low": _get_pref(db, user_id, "model_low", get_default_tier_models()["low"]),
+        "medium": _get_pref(db, user_id, "model_medium", get_default_tier_models()["medium"]),
+        "high": _get_pref(db, user_id, "model_high", get_default_tier_models()["high"]),
     }
     return ModelSettings(
-        whitelist=MODEL_WHITELIST,
-        defaults=DEFAULT_TIER_MODELS,
+        whitelist={t: get_whitelist(t) for t in ("low", "medium", "high")},
+        defaults=get_default_tier_models(),
         current=ModelSelection(**current),
     )
 
@@ -134,36 +143,39 @@ async def update_model_settings(
 
 @router.get("/usage", response_model=UsageResponse)
 async def get_usage():
-    """查询 OpenRouter 余额/消费
+    """查询 LLM 余额/消费
 
-    调 https://openrouter.ai/api/v1/auth/key (不消耗 token)
-    返回: email, is_free_tier, limit, limit_remaining, usage
+    v1.2.4: 校验端点跟随 LLM_BASE_URL —— OpenRouter 系能拿到余额/账号;
+    其他 provider 查不到余额, 返回 ok=True + 提示"该服务商不提供余额查询"。
     """
     if not settings.LLM_API_KEY:
         return UsageResponse(ok=False, error="LLM_API_KEY 未设置, 无法查询余额")
 
+    from app.agent.llm.provider_check import check_llm_credentials
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.get(
-                "https://openrouter.ai/api/v1/auth/key",
-                headers={"Authorization": f"Bearer {settings.LLM_API_KEY}"},
+        chk = await check_llm_credentials(settings.LLM_API_KEY, settings.LLM_BASE_URL)
+        if not chk["ok"]:
+            return UsageResponse(
+                ok=False,
+                error=chk.get("error") or chk.get("hint"),
+                error_code=chk.get("error_code"),
             )
-        if r.status_code == 200:
-            data = r.json().get("data", {})
+        acct = chk.get("account") or {}
+        if not acct:
+            # 非 OpenRouter: 鉴权通过, 但查不到余额 —— 这不是错误
             return UsageResponse(
                 ok=True,
-                email=data.get("email"),
-                is_free_tier=data.get("is_free_tier"),
-                limit=data.get("limit"),
-                limit_remaining=data.get("limit_remaining"),
-                usage=data.get("usage"),
+                error=None,
+                message="该服务商不提供余额查询 (鉴权已通过)",
             )
-        elif r.status_code == 401:
-            return UsageResponse(ok=False, error="key 无效 (401), 请检查 .env 的 LLM_API_KEY")
-        else:
-            return UsageResponse(ok=False, error=f"OpenRouter 返回 {r.status_code}: {r.text[:200]}")
-    except httpx.ConnectError as e:
-        return UsageResponse(ok=False, error=f"连不上 OpenRouter: {e}")
+        return UsageResponse(
+            ok=True,
+            email=acct.get("email"),
+            is_free_tier=acct.get("is_free_tier"),
+            limit=acct.get("limit"),
+            limit_remaining=acct.get("limit_remaining"),
+            usage=acct.get("usage"),
+        )
     except Exception as e:
         logger.error(f"Usage query error: {e}")
         return UsageResponse(ok=False, error=str(e))
@@ -182,8 +194,8 @@ async def get_status(db: Session = Depends(get_db)):
         "embedding_provider": getattr(settings, "embedding_provider", "unknown"),
         "tts_enabled": True,  # v0.9.8: browser web speech always available
         "current_models": {
-            "low": _get_pref(db, 1, "model_low", DEFAULT_TIER_MODELS["low"]),
-            "medium": _get_pref(db, 1, "model_medium", DEFAULT_TIER_MODELS["medium"]),
-            "high": _get_pref(db, 1, "model_high", DEFAULT_TIER_MODELS["high"]),
+            "low": _get_pref(db, 1, "model_low", get_default_tier_models()["low"]),
+            "medium": _get_pref(db, 1, "model_medium", get_default_tier_models()["medium"]),
+            "high": _get_pref(db, 1, "model_high", get_default_tier_models()["high"]),
         },
     }

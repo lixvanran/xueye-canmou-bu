@@ -212,13 +212,13 @@ async def run_llm_with_tools(
         messages.append(_make_assistant_tool_message(response))
         messages.extend(tool_messages)
         # v0.9.6: 二次调用 - **仍然带 tools**, 让 LLM 拿到工具结果后还能继续调
-        # (修复: 之前 tools=[] 导致 LLM 调完 describe_file 后只能用文字回答, 不能调 add_mistake)
+        # (修复: 之前 tools=[] 导致 LLM 调完 describe_file 后只能用文字回答, 不能继续调工具)
         if deep_thinking:
             final = await deep_thinking_client.chat(messages, tools=TOOLS)
         else:
             final = await _do_chat_with_models(primary, fallback, messages, tools=TOOLS)
         # v0.9.6: 如果二次调用又有 tool_calls, 最多再执行 1 轮
-        # (错题工作流: scan → describe → add_mistake, 共 3 步, 给 3 轮工具执行)
+        # (多轮工具循环: 给 3 轮, 让 LLM 能连续调多个工具再出最终答案)
         max_tool_rounds = 3
         for _ in range(max_tool_rounds - 1):
             if not final.get("tool_calls"):
@@ -293,8 +293,8 @@ async def run_llm_stream(
         yield ("reasoning", response["reasoning"])
 
     # 2) 如果有 tool_calls, 执行
-    # v0.9.6: 多轮工具循环 — 错题工作流 scan → describe → add_mistake 共 3 步
-    # 之前只支持 1 轮, LLM 调完 describe_file 拿到结果后第二轮 tools=[] 不能调 add_mistake
+    # v0.9.6: 多轮工具循环 — 最多 3 轮, 让 LLM 能连续调多个工具
+    # 之前只支持 1 轮, LLM 调完第一个工具拿到结果后, 第二轮 tools=[] 就没工具可调了
     all_tool_logs: List[Dict] = []
     max_tool_rounds = 3
     for _round in range(max_tool_rounds):
