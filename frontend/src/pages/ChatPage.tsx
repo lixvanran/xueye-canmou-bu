@@ -89,24 +89,24 @@ const TABS: TabConfig[] = [
 // v0.1.7+: 16 persona — 与后端 AVAILABLE_PERSONAS 同步
 // 来源: nuwa-skill 蒸馏 13 人物 + 1 主题 (github.com/alchaincyf, MIT) + 自蒸馏 xuejie / duanzishou
 // v1.2.2+: avatar 字段指向 /public/avatars/{value}.jpg (Pixar 风 cartoon 头像)
-type PersonaEntry = { value: string; label: string; desc: string; avatar: string }
+type PersonaEntry = { value: string; label: string; desc: string; avatar: string; group: '学习' | '通识' }
 const PERSONAS: PersonaEntry[] = [
-  { value: 'teacher_zhang', label: '张雪峰',  desc: 'nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 启发', avatar: '/avatars/teacher_zhang.jpg' },
-  { value: 'xuejie',        label: '学姐',    desc: '串行复利 · 适合答疑陪伴', avatar: '/avatars/xuejie.jpg' },
-  { value: 'duanzishou',    label: '段子手',  desc: '第一性原理 + 段子 · 适合闲聊', avatar: '/avatars/duanzishou.jpg' },
-  { value: 'jobs',          label: '乔布斯',  desc: '专注=说不 · 产品/设计/战略', avatar: '/avatars/jobs.jpg' },
-  { value: 'musk',          label: '马斯克',  desc: '第一性原理 · 工程/成本/删减', avatar: '/avatars/musk.jpg' },
-  { value: 'munger',        label: '芒格',    desc: '反转思维 · 投资/多学科', avatar: '/avatars/munger.jpg' },
-  { value: 'feynman',       label: '费曼',    desc: '命名≠理解 · 学习/科学', avatar: '/avatars/feynman.jpg' },
-  { value: 'naval',         label: '纳瓦尔',  desc: '杠杆思维 · 财富/人生哲学', avatar: '/avatars/naval.jpg' },
-  { value: 'zhang_yiming',  label: '张一鸣',  desc: '延迟满足 · 产品/组织/全球化', avatar: '/avatars/zhang_yiming.jpg' },
-  { value: 'paul_graham',   label: 'Paul Graham', desc: '写作=思考 · 创业/YC', avatar: '/avatars/paul_graham.jpg' },
-  { value: 'karpathy',      label: 'Karpathy', desc: 'Software X.0 · AI/工程', avatar: '/avatars/karpathy.jpg' },
-  { value: 'ilya',          label: 'Ilya 苏茨克维', desc: '压缩=理解 · AI 安全/研究', avatar: '/avatars/ilya.jpg' },
-  { value: 'mrbeast',       label: 'MrBeast', desc: 'CTR×AVD · 内容/YouTube', avatar: '/avatars/mrbeast.jpg' },
-  { value: 'trump',         label: '特朗普',  desc: '一切都是交易 · 谈判/权力', avatar: '/avatars/trump.jpg' },
-  { value: 'taleb',         label: '塔勒布',  desc: '反脆弱 · 风险/黑天鹅', avatar: '/avatars/taleb.jpg' },
-  { value: 'x_mastery',     label: 'X Mastery', desc: '6 位创作者综合 · X/Twitter 运营', avatar: '/avatars/x_mastery.jpg' },
+  { value: 'teacher_zhang', label: '张雪峰',  desc: 'nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 启发', group: '学习', avatar: '/avatars/teacher_zhang.jpg' },
+  { value: 'xuejie',        label: '学姐',    desc: '串行复利 · 适合答疑陪伴', group: '学习', avatar: '/avatars/xuejie.jpg' },
+  { value: 'duanzishou',    label: '段子手',  desc: '第一性原理 + 段子 · 适合闲聊', group: '学习', avatar: '/avatars/duanzishou.jpg' },
+  { value: 'jobs',          label: '乔布斯',  desc: '专注=说不 · 产品/设计/战略', group: '通识', avatar: '/avatars/jobs.jpg' },
+  { value: 'musk',          label: '马斯克',  desc: '第一性原理 · 工程/成本/删减', group: '通识', avatar: '/avatars/musk.jpg' },
+  { value: 'munger',        label: '芒格',    desc: '反转思维 · 投资/多学科', group: '通识', avatar: '/avatars/munger.jpg' },
+  { value: 'feynman',       label: '费曼',    desc: '命名≠理解 · 学习/科学', group: '学习', avatar: '/avatars/feynman.jpg' },
+  { value: 'naval',         label: '纳瓦尔',  desc: '杠杆思维 · 财富/人生哲学', group: '通识', avatar: '/avatars/naval.jpg' },
+  { value: 'zhang_yiming',  label: '张一鸣',  desc: '延迟满足 · 产品/组织/全球化', group: '通识', avatar: '/avatars/zhang_yiming.jpg' },
+  { value: 'paul_graham',   label: 'Paul Graham', desc: '写作=思考 · 创业/YC', group: '通识', avatar: '/avatars/paul_graham.jpg' },
+  { value: 'karpathy',      label: 'Karpathy', desc: 'Software X.0 · AI/工程', group: '通识', avatar: '/avatars/karpathy.jpg' },
+  { value: 'ilya',          label: 'Ilya 苏茨克维', desc: '压缩=理解 · AI 安全/研究', group: '通识', avatar: '/avatars/ilya.jpg' },
+  { value: 'mrbeast',       label: 'MrBeast', desc: 'CTR×AVD · 内容/YouTube', group: '通识', avatar: '/avatars/mrbeast.jpg' },
+  { value: 'trump',         label: '特朗普',  desc: '一切都是交易 · 谈判/权力', group: '通识', avatar: '/avatars/trump.jpg' },
+  { value: 'taleb',         label: '塔勒布',  desc: '反脆弱 · 风险/黑天鹅', group: '通识', avatar: '/avatars/taleb.jpg' },
+  { value: 'x_mastery',     label: 'X Mastery', desc: '6 位创作者综合 · X/Twitter 运营', group: '通识', avatar: '/avatars/x_mastery.jpg' },
 ]
 
 // v2.0: scenario label 映射 (search 结果用)

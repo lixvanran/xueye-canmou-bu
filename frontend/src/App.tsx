@@ -8,17 +8,17 @@
  * - sidebar 标题展示 useAgentName
  */
 import { useState } from 'react'
-import { Sparkles, MessageSquare, Calendar, FolderOpen, User, Settings, Gamepad2 } from 'lucide-react'
+import { Sparkles, MessageSquare, Calendar, FolderOpen, User, Settings, BookOpenCheck } from 'lucide-react'
 import TodayPage from '@/pages/TodayPage'
 import ChatPage from '@/pages/ChatPage'
 import SchedulePage from '@/pages/SchedulePage'
 import ResourcesPage from '@/pages/ResourcesPage'
+import ReviewPage from '@/pages/ReviewPage'
 import ProfilePage from '@/pages/ProfilePage'
-import GamePage from '@/pages/GamePage'
 import SettingsModal from '@/components/SettingsModal'
 import { useAgentName } from '@/hooks/useAgentName'
 
-type PageKey = 'today' | 'chat' | 'schedule' | 'resources' | 'profile' | 'game' | 'settings'
+type PageKey = 'today' | 'chat' | 'review' | 'schedule' | 'resources' | 'profile' | 'settings'
 
 interface NavItem {
   key: PageKey
@@ -30,11 +30,11 @@ interface NavItem {
 const navItems: NavItem[] = [
   { key: 'today', label: '今日', icon: Sparkles, color: 'text-amber-500' },
   { key: 'chat', label: '会话', icon: MessageSquare, color: 'text-blue-500' },
+  // v1.3.0: 学习主线 (错题本 / 复习队列 / 闪卡 / 掌握度)
+  { key: 'review', label: '学习', icon: BookOpenCheck, color: 'text-rose-500' },
   { key: 'schedule', label: '日程', icon: Calendar, color: 'text-emerald-500' },
   { key: 'resources', label: '资料库', icon: FolderOpen, color: 'text-indigo-500' },
   { key: 'profile', label: '画像', icon: User, color: 'text-purple-500' },
-  // v1.2.2 [P2] 课间解压 — 张雪峰快跑 + 高一必修一背诵, 放在画像和设置之间
-  { key: 'game', label: '课间解压', icon: Gamepad2, color: 'text-rose-500' },
 ]
 
 const settingsItem: NavItem = {
@@ -147,8 +147,8 @@ export default function App() {
         <div className={page === 'profile' ? 'h-full' : 'hidden'}>
           {visited.has('profile') && <ProfilePage />}
         </div>
-        <div className={page === 'game' ? 'h-full' : 'hidden'}>
-          {visited.has('game') && <GamePage />}
+        <div className={page === 'review' ? 'h-full' : 'hidden'}>
+          {visited.has('review') && <ReviewPage />}
         </div>
       </main>
 

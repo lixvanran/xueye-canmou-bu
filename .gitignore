@@ -43,12 +43,6 @@ user_index.json
 # v0.9.1 修: 之前 "uploads/" 误伤 workspace/uploads/, 删掉这条, 保留更精确的 backend/data/uploads/
 backend/data/uploads/
 
-# ===== 音频样本 =====
-samples/*.mp3
-samples/*.wav
-samples/*.m4a
-!samples/INSTRUCTIONS.md
-!samples/.gitkeep
 
 # ===== IDE =====
 .idea/

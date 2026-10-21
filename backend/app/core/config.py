@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "LocalAgent"
-    APP_VERSION: str = "1.2.4"  # v1.2.4: 工程稳定性 — provider 感知白名单 / key 校验跟随 base_url / 日程工具 schema 补全 / CI + 39 项测试
+    APP_VERSION: str = "1.3.0"  # v1.3.0: 学习主线 — 错题本闭环 / 知识点掌握度 + SRS / 学段自适应 / 情绪支持 / 删减 13.6MB
     DEBUG: bool = True
 
     # Server
@@ -123,8 +123,6 @@ class Settings(BaseSettings):
     MINIMAX_TTS_MODEL: str = "speech-2.8-turbo"
     MINIMAX_VOICE_DEFAULT: str = "male-qn-qingse"
 
-    # ===== v0.7.9.4: Voice Cloning (废弃) =====
-    ZHANG_VOICE_ID: str = ""
 
     # ===== HuggingFace Mirror =====
     HF_ENDPOINT: str = "https://hf-mirror.com"

@@ -276,22 +276,22 @@ async def profile_view(user_id: int = 1, db: Session = Depends(get_db)):
 # v0.1.7+ 扩充: nuwa-skill 蒸馏 13 人物 + 1 主题 + 自定义 2 个 = 16 个 persona
 # 来源: github.com/alchaincyf/nuwa-skill (MIT 协议) + 自蒸馏 xuejie / duanzishou
 AVAILABLE_PERSONAS = [
-    {"value": "teacher_zhang", "label": "张雪峰", "desc": "nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 决策启发", "source": "nuwa-skill", "scenario_fit": ["chat", "exam", "volunteer"]},
-    {"value": "xuejie",        "label": "学姐",   "desc": "自蒸馏 · 串行复利 · 适合答疑陪伴", "source": "self",      "scenario_fit": ["chat", "exam"]},
-    {"value": "duanzishou",    "label": "段子手", "desc": "自蒸馏 · 第一性原理 + 段子 · 适合闲聊", "source": "self",      "scenario_fit": ["chitchat"]},
-    {"value": "jobs",          "label": "乔布斯", "desc": "nuwa-skill · 专注=说不 · 产品/设计/战略", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
-    {"value": "musk",          "label": "马斯克", "desc": "nuwa-skill · 第一性原理 · 工程/成本/删减", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
-    {"value": "munger",        "label": "芒格",   "desc": "nuwa-skill · 反转思维 · 投资/多学科", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
-    {"value": "feynman",       "label": "费曼",   "desc": "nuwa-skill · 命名≠理解 · 学习/科学", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
-    {"value": "naval",         "label": "纳瓦尔", "desc": "nuwa-skill · 杠杆思维 · 财富/人生哲学", "source": "nuwa-skill", "scenario_fit": ["chat"]},
-    {"value": "zhang_yiming",  "label": "张一鸣", "desc": "nuwa-skill · 延迟满足 · 产品/组织/全球化", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
-    {"value": "paul_graham",   "label": "Paul Graham", "desc": "nuwa-skill · 写作=思考 · 创业/YC", "source": "nuwa-skill", "scenario_fit": ["chat"]},
-    {"value": "karpathy",      "label": "Karpathy",   "desc": "nuwa-skill · Software X.0 · AI/工程", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
-    {"value": "ilya",          "label": "Ilya 苏茨克维","desc": "nuwa-skill · 压缩=理解 · AI 安全/研究", "source": "nuwa-skill", "scenario_fit": ["chat"]},
-    {"value": "mrbeast",       "label": "MrBeast",     "desc": "nuwa-skill · CTR × AVD · 内容/YouTube", "source": "nuwa-skill", "scenario_fit": ["chitchat"]},
-    {"value": "trump",         "label": "特朗普",     "desc": "nuwa-skill · 一切都是交易 · 谈判/权力", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
-    {"value": "taleb",         "label": "塔勒布",     "desc": "nuwa-skill · 反脆弱 · 风险/黑天鹅", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
-    {"value": "x_mastery",     "label": "X Mastery", "desc": "nuwa-skill · 6 位创作者综合 · X/Twitter 运营", "source": "nuwa-skill", "scenario_fit": ["chitchat"]},
+    {"value": "teacher_zhang", "label": "张雪峰", "desc": "nuwa-skill · 教育/职业/阶层 · 5 心智模型 + 8 决策启发", "group": "学习", "source": "nuwa-skill", "scenario_fit": ["chat", "exam", "volunteer"]},
+    {"value": "xuejie",        "label": "学姐",   "desc": "自蒸馏 · 串行复利 · 适合答疑陪伴", "group": "学习", "source": "self",      "scenario_fit": ["chat", "exam"]},
+    {"value": "duanzishou",    "label": "段子手", "desc": "自蒸馏 · 第一性原理 + 段子 · 适合闲聊", "group": "学习", "source": "self",      "scenario_fit": ["chitchat"]},
+    {"value": "jobs",          "label": "乔布斯", "desc": "nuwa-skill · 专注=说不 · 产品/设计/战略", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "musk",          "label": "马斯克", "desc": "nuwa-skill · 第一性原理 · 工程/成本/删减", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "munger",        "label": "芒格",   "desc": "nuwa-skill · 反转思维 · 投资/多学科", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "feynman",       "label": "费曼",   "desc": "nuwa-skill · 命名≠理解 · 学习/科学", "group": "学习", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "naval",         "label": "纳瓦尔", "desc": "nuwa-skill · 杠杆思维 · 财富/人生哲学", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chat"]},
+    {"value": "zhang_yiming",  "label": "张一鸣", "desc": "nuwa-skill · 延迟满足 · 产品/组织/全球化", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "paul_graham",   "label": "Paul Graham", "desc": "nuwa-skill · 写作=思考 · 创业/YC", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chat"]},
+    {"value": "karpathy",      "label": "Karpathy",   "desc": "nuwa-skill · Software X.0 · AI/工程", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chat", "exam"]},
+    {"value": "ilya",          "label": "Ilya 苏茨克维","desc": "nuwa-skill · 压缩=理解 · AI 安全/研究", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chat"]},
+    {"value": "mrbeast",       "label": "MrBeast",     "desc": "nuwa-skill · CTR × AVD · 内容/YouTube", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chitchat"]},
+    {"value": "trump",         "label": "特朗普",     "desc": "nuwa-skill · 一切都是交易 · 谈判/权力", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "taleb",         "label": "塔勒布",     "desc": "nuwa-skill · 反脆弱 · 风险/黑天鹅", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chat", "volunteer"]},
+    {"value": "x_mastery",     "label": "X Mastery", "desc": "nuwa-skill · 6 位创作者综合 · X/Twitter 运营", "group": "通识", "source": "nuwa-skill", "scenario_fit": ["chitchat"]},
 ]
 
 

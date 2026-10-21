@@ -113,6 +113,13 @@ class ResourceORM(Base):
     knowledge_tags = Column(JSON, nullable=True)
     # difficulty: 1-5, 1=入门 5=竞赛级, 默认 3 (中等)
     difficulty = Column(Integer, default=3)
+    # ===== v1.3.0: 错题本 SRS 字段 (间隔重复调度) =====
+    # 已复习次数 —— 连续答对 3 次算掌握
+    review_count = Column(Integer, default=0)
+    # 下次该复习这条错题的时间 —— 复习队列按它排序
+    next_review_at = Column(DateTime, nullable=True, index=True)
+    # 上次复习时间
+    last_reviewed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -194,6 +201,12 @@ def normalize_scenario(raw: str | None) -> str:
 def init_db():
     """Create tables and seed demo data. Handles simple schema migration."""
     _migrate_if_needed()
+    # v1.3.0: 确保学习主线的表 (kp_mastery / exam_scores) 被注册到 Base.metadata
+    # 不 import 的话, create_all 不会建这两张表
+    try:
+        from app.learning.db import KPMasteryORM, ExamScoreORM  # noqa: F401
+    except Exception as e:  # pragma: no cover
+        logger.warning(f"learning models not loaded: {e}")
     # v0.9.1: 显式确保所有 ORM 类都注册到 Base.metadata
     # (在某些 Python/SQLAlchemy 版本下, 跨模块 import 可能没触发 model 注册)
     logger.debug(
@@ -281,6 +294,10 @@ def _migrate_if_needed():
         # v2.0: 知识图谱相关字段
         'knowledge_tags':  ('JSON',         "NULL"),
         'difficulty':      ('INTEGER',      "3"),
+        # v1.3.0: 错题本 SRS 字段
+        'review_count':    ('INTEGER',      "0"),
+        'next_review_at':  ('DATETIME',     "NULL"),
+        'last_reviewed_at':('DATETIME',     "NULL"),
     }
     with engine.connect() as conn:
         for col, (ctype, default) in new_cols.items():
@@ -299,6 +316,15 @@ def _migrate_if_needed():
             conn.commit()
         except Exception as e:
             logger.debug(f"Index ix_resources_code: {e}")
+        # v1.3.0: 复习队列按 (next_review_at) 查
+        try:
+            conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_resources_next_review_at "
+                "ON resources (next_review_at)"
+            ))
+            conn.commit()
+        except Exception as e:
+            logger.debug(f"Index ix_resources_next_review_at: {e}")
 
     # ===== v2.0: profile 字段补全 =====
     _migrate_profile_fields(engine)

@@ -1,0 +1,263 @@
+[
+  {
+    "id": "recite---0",
+    "subject": "语文",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "床前明月光，疑是地上霜",
+    "answer": "李白《静夜思》",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---1",
+    "subject": "语文",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "会当凌绝顶，一览众山小",
+    "answer": "杜甫《望岳》",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---2",
+    "subject": "语文",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "少壮不努力，老大徒伤悲",
+    "answer": "《长歌行》",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---3",
+    "subject": "语文",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "学而不思则罔，思而不学则殆",
+    "answer": "《论语》",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite-sin-cos--4",
+    "subject": "数学",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "sin²α + cos²α = ?",
+    "answer": "1",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite--log-mn--5",
+    "subject": "数学",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "对数公式 logₐ(MN) = ?",
+    "answer": "logₐM + logₐN",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite--a-b--6",
+    "subject": "数学",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "集合交集 A∩B = ?",
+    "answer": "{x|x∈A 且 x∈B}",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---7",
+    "subject": "数学",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "一元二次方程求根公式",
+    "answer": "x = [-b±√(b²-4ac)] / 2a",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---8",
+    "subject": "英语",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "你好",
+    "answer": "hello",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---9",
+    "subject": "英语",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "谢谢你",
+    "answer": "thank you",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---10",
+    "subject": "英语",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "再见",
+    "answer": "goodbye",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite--45--11",
+    "subject": "英语",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "一节课 45 分钟",
+    "answer": "a class lasts 45 minutes",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite--f--12",
+    "subject": "物理",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "牛顿第二定律 F = ?",
+    "answer": "ma (力=质量×加速度)",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite--c--13",
+    "subject": "物理",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "光在真空中的速度 c ≈ ?",
+    "answer": "3×10⁸ m/s",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite--g--14",
+    "subject": "物理",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "自由落体加速度 g ≈ ?",
+    "answer": "9.8 m/s²",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite--e--15",
+    "subject": "物理",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "动能公式 Eₖ = ?",
+    "answer": "½mv²",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---16",
+    "subject": "化学",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "水的化学式",
+    "answer": "H₂O",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---17",
+    "subject": "化学",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "二氧化碳的化学式",
+    "answer": "CO₂",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---18",
+    "subject": "化学",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "氯化钠（食盐）的化学式",
+    "answer": "NaCl",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite-1-mol--19",
+    "subject": "化学",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "1 mol 物质含粒子数",
+    "answer": "6.02×10²³ (阿伏伽德罗常数)",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---20",
+    "subject": "生物",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "细胞的基本结构",
+    "answer": "细胞膜·细胞质·细胞核",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite-dna--21",
+    "subject": "生物",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "DNA 双螺旋结构发现者",
+    "answer": "Watson & Crick (1953)",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---22",
+    "subject": "生物",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "有丝分裂间期主要变化",
+    "answer": "DNA 复制 + 有关蛋白质合成",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---23",
+    "subject": "政治",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "我国根本政治制度",
+    "answer": "人民代表大会制度",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---24",
+    "subject": "政治",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "我国基本经济制度",
+    "answer": "公有制为主体、多种所有制经济共同发展",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---25",
+    "subject": "历史",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "鸦片战争爆发于",
+    "answer": "1840 年",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---26",
+    "subject": "历史",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "中国共产党成立于",
+    "answer": "1921 年 7 月 (中共一大)",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---27",
+    "subject": "地理",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "地球最厚的一层",
+    "answer": "地幔",
+    "source": "高一必修一 (人教版)"
+  },
+  {
+    "id": "recite---28",
+    "subject": "地理",
+    "type": "recitation",
+    "stage": "高中",
+    "question": "地球大气主要成分",
+    "answer": "N₂ (78%) + O₂ (21%)",
+    "source": "高一必修一 (人教版)"
+  }
+]

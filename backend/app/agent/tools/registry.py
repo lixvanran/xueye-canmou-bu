@@ -25,6 +25,13 @@ from app.agent.tools.schedule import (  # v2.0 新增 — 日程/学习计划
     update_schedule, suggest_schedule,
 )
 from app.agent.tools import nuwa_skill as _nuwa_skill  # v2.0 预留接入
+from app.agent.tools.learning import (  # v1.3.0 学习主线
+    add_mistake,
+    list_mistakes,
+    list_weak_points,
+    add_exam_score,
+    search_knowledge_points,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +66,12 @@ TOOL_REGISTRY: Dict[str, Callable[..., Awaitable[Dict]]] = {
     "list_schedule": list_schedule,
     "update_schedule": update_schedule,
     "suggest_schedule": suggest_schedule,
+    # ===== v1.3.0 学习主线 (错题本 / 掌握度 / 模考) =====
+    "add_mistake": add_mistake,
+    "list_mistakes": list_mistakes,
+    "list_weak_points": list_weak_points,
+    "add_exam_score": add_exam_score,
+    "search_knowledge_points": search_knowledge_points,
 }
 
 

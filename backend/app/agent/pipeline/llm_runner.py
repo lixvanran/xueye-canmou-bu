@@ -11,6 +11,27 @@ from typing import Dict, AsyncGenerator, List, Tuple, Optional
 
 from app.agent.llm import llm_client, deep_thinking_client
 from app.agent.prompts import TOOLS
+
+
+def _filter_tools(allowlist: Optional[List[str]]):
+    """按学段白名单过滤工具 schema (v1.3.0)
+
+    志愿类工具 (query_college / calculate_admission_probability ...) 对初中生
+    毫无意义, 对高中生也只有每年 6 月有用 ⇒ 非高中学段**从 schema 里直接摘掉**。
+    硬过滤 (schema 层) 比在 prompt 里说"你别用"可靠得多 ——
+    prompt 是建议, schema 是约束。
+
+    allowlist 为 None ⇒ 不过滤, 用全部工具 (老行为, 兜底安全)。
+    """
+    if allowlist is None:
+        return TOOLS
+    allowed = set(allowlist)
+    filtered = [t for t in TOOLS if t["function"]["name"] in allowed]
+    # 兜底: 过滤后不能一个工具都不剩 (否则模型连话都说不出来)
+    if not filtered:
+        logger.warning("工具白名单过滤后为空, 回退到全部工具")
+        return TOOLS
+    return filtered
 from app.agent.tools import execute_tool
 from app.agent.pipeline.postprocessor import sanitize_llm_output, strip_think_block, ThinkTagStripper
 
@@ -179,6 +200,7 @@ async def run_llm_with_tools(
     deep_thinking: bool = False,
     primary_model: Optional[str] = None,
     fallback_models: Optional[List[str]] = None,
+    tool_allowlist: Optional[List[str]] = None,
 ) -> Dict:
     """非流式 LLM + tool 循环
 
@@ -196,13 +218,14 @@ async def run_llm_with_tools(
     }
     """
     primary, fallback = _resolve_model_hint(primary_model, fallback_models, deep_thinking)
+    tools = _filter_tools(tool_allowlist)
 
     # 第一次调用
     if deep_thinking:
-        response = await deep_thinking_client.chat(messages, tools=TOOLS)
+        response = await deep_thinking_client.chat(messages, tools=tools)
         model_used = deep_thinking_client.model
     else:
-        response = await _do_chat_with_models(primary, fallback, messages, tools=TOOLS)
+        response = await _do_chat_with_models(primary, fallback, messages, tools=tools)
         # v1.2.3: 实际用到的模型由 _do_chat_with_models 如实回填 (全失败时为 None)
         model_used = response.get("model")
 
@@ -214,9 +237,9 @@ async def run_llm_with_tools(
         # v0.9.6: 二次调用 - **仍然带 tools**, 让 LLM 拿到工具结果后还能继续调
         # (修复: 之前 tools=[] 导致 LLM 调完 describe_file 后只能用文字回答, 不能继续调工具)
         if deep_thinking:
-            final = await deep_thinking_client.chat(messages, tools=TOOLS)
+            final = await deep_thinking_client.chat(messages, tools=tools)
         else:
-            final = await _do_chat_with_models(primary, fallback, messages, tools=TOOLS)
+            final = await _do_chat_with_models(primary, fallback, messages, tools=tools)
         # v0.9.6: 如果二次调用又有 tool_calls, 最多再执行 1 轮
         # (多轮工具循环: 给 3 轮, 让 LLM 能连续调多个工具再出最终答案)
         max_tool_rounds = 3
@@ -228,9 +251,9 @@ async def run_llm_with_tools(
             messages.append(_make_assistant_tool_message(final))
             messages.extend(extra_msgs)
             if deep_thinking:
-                final = await deep_thinking_client.chat(messages, tools=TOOLS)
+                final = await deep_thinking_client.chat(messages, tools=tools)
             else:
-                final = await _do_chat_with_models(primary, fallback, messages, tools=TOOLS)
+                final = await _do_chat_with_models(primary, fallback, messages, tools=tools)
         # 最终不带 tools, 出 markdown 答案
         if deep_thinking:
             last = await deep_thinking_client.chat(messages, tools=[])
@@ -257,6 +280,7 @@ async def run_llm_stream(
     primary_model: Optional[str] = None,
     fallback_models: Optional[List[str]] = None,
     stop_event: Optional[asyncio.Event] = None,
+    tool_allowlist: Optional[List[str]] = None,
 ) -> AsyncGenerator[Tuple[str, any], None]:
     """流式 LLM
 
@@ -271,6 +295,7 @@ async def run_llm_stream(
     v0.8.0+: stop_event - 用户按 Stop 按钮会 set, 流每 N 个 chunk check 一次
     """
     primary, fallback = _resolve_model_hint(primary_model, fallback_models, deep_thinking)
+    tools = _filter_tools(tool_allowlist)
 
     # 1) 第一次非流式调用, 拿 tool_calls + 早期 reasoning
     #   (Stop 按钮在这里也能中断, 因为它就是一次 await)
@@ -278,10 +303,10 @@ async def run_llm_stream(
         yield ("stopped", "用户中途叫停 (LLM 启动前)")
         return
     if deep_thinking:
-        response = await deep_thinking_client.chat(messages, tools=TOOLS)
+        response = await deep_thinking_client.chat(messages, tools=tools)
         model_used = deep_thinking_client.model
     else:
-        response = await _do_chat_with_models(primary, fallback, messages, tools=TOOLS)
+        response = await _do_chat_with_models(primary, fallback, messages, tools=tools)
         # v1.2.3: 如实上报 (全失败时为 None, 由上层标成失败)
         model_used = response.get("model")
 
@@ -311,9 +336,9 @@ async def run_llm_stream(
         messages.extend(tool_messages)
         # 下一轮: 让 LLM 看到工具结果后能继续调
         if deep_thinking:
-            response = await deep_thinking_client.chat(messages, tools=TOOLS)
+            response = await deep_thinking_client.chat(messages, tools=tools)
         else:
-            response = await _do_chat_with_models(primary, fallback, messages, tools=TOOLS)
+            response = await _do_chat_with_models(primary, fallback, messages, tools=tools)
         if response.get("reasoning"):
             yield ("reasoning", response["reasoning"])
 

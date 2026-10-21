@@ -16,6 +16,7 @@ from app.routers import api_key as api_key_router
 from app.routers import schedule as schedule_router
 from app.routers import nuwa_skill as nuwa_skill_router
 from app.routers import team as team_router
+from app.routers import learning as learning_router
 import logging
 import time
 
@@ -155,6 +156,8 @@ app.include_router(api_key_router.router)
 app.include_router(schedule_router.router)
 app.include_router(nuwa_skill_router.router)
 app.include_router(team_router.router)
+# v1.3.0: 学习主线 (错题本 / 复习 / 掌握度 / 模考)
+app.include_router(learning_router.router)
 
 
 

@@ -49,11 +49,21 @@ backend/
     core/config.py           全部配置 (Pydantic Settings)
     db/database.py           SQLite ORM + 启动时 schema 迁移
     routers/                 FastAPI 路由
-  knowledge_base/            10 个内置 JSON KB (院校/专业/分数线/政策/就业)
+  learning/                  ★ 学习主线 (v1.3.0)
+    db.py                    知识点掌握度 / 模考成绩 ORM
+    srs.py                   间隔重复算法 (可解释, 不黑盒)
+    service.py               错题 → 归因 → 掌握度 → 队列 → 复习 → 掌握度再更新
+    knowledge.py             知识点库加载 + 闪卡生成
+    stage.py                 学段策略 + 工具白名单 + 情绪检测
+  knowledge_base/            内置 JSON KB
+    01-10_*.json             院校/专业/分数线/政策/就业 (志愿系, 已冻结不维护)
+    11_knowledge_points.json 学科知识点卡 (定义/公式/易错点/常考问法)
+    12_recitation_cards.json 高一必修一背诵卡 (原藏跑酷游戏里, v1.3.0 抽出)
   db/                        大数据 (8.5万条录取分 / 3765所院校 / 585个专业)
   tests/                     pytest (离线, 不需要 LLM key)
 frontend/
-  src/pages/                 ChatPage / TodayPage / SchedulePage / ResourcesPage / ProfilePage / GamePage
+  src/pages/                 ChatPage / TodayPage / SchedulePage / ResourcesPage / ProfilePage / ReviewPage
+  src/api/learning.ts        错题本 / 复习队列 / 掌握度 / 模考 API
   src/components/            SettingsModal
   src/api/                   API 封装 + SSE 解析
 .github/workflows/ci.yml     CI: pytest + tsc + build
@@ -131,22 +141,36 @@ CI 里也有独立的 schema 一致性检查。
 
 `.env` 的 `TIER_MODEL_LOW/MEDIUM/HIGH` 留空 = 用 provider 默认; 填了 = 显式覆盖。
 
-### 5. key 校验不许写死服务商
+### 5. 学段不同, 方法就不同 —— 不是换个难度
+
+初中生**不能用**高中方法: 讲函数用「正比例/二次函数图像」不用「单调性/导数」,
+讲几何用初中证明思路不用向量/解析几何, 讲物理用初中模型不用动量/电磁感应。
+
+更硬的: **志愿类工具对非高中学段要从 LLM schema 里直接摘掉**
+(`app/learning/stage.py` 的 `allowed_tools` → `llm_runner._filter_tools`)。
+靠 prompt 说「你别用」是**建议**, schema 层过滤才是**约束**。
+
+### 6. 情绪状态差的时候不要讲道理
+
+学生说「我完了 / 考不上 / 我太差了 / 想哭」⇒ 切换成
+「先接住情绪 → 把问题缩小 → 给一个 15 分钟能做完的小动作」,
+**不要**堆方法论、堆知识点、堆鼓励的话。检测在 `stage.detect_emotional_state()`。
+
+### 7. key 校验不许写死服务商
 
 用 `app/agent/llm/provider_check.py` 的 `check_llm_credentials()`, 它跟随
 `LLM_BASE_URL`: OpenRouter 走 `/auth/key` (能查余额), 其他走极小 chat 探测 (1 token)。
 
 **"拿不到账号信息" ≠ "key 无效"** —— 两者必须分开报。
 
-### 6. 推理内容不能漏进用户气泡
+### 8. 推理内容不能漏进用户气泡
 
 MiniMax-M3 / GLM-5.x 把 reasoning 内联在 `content` 里。必须用
 `postprocessor.strip_think_block` / `ThinkTagStripper` 剥掉。
 
-### 7. 不要动这些
+### 9. 不要动这些
 
-- `frontend/public/avatars/` — 16 张 persona 肖像 (9.2MB)
-- `frontend/public/games/` — 张雪峰快跑 + 高一背诵
+- `frontend/public/avatars/` — 16 张 persona 肖像 (已压到 256px / 共 173KB)
 - `backend/db/*.json` — 8.5万条录取分 / 3765所院校 / 585个专业
 - `backend/knowledge_base/*.json` — 10 个内置 KB
 - `app/agent/prompts/style.py` — 16 个 persona 的思维框架, 改动会波及所有人格
@@ -159,11 +183,12 @@ MiniMax-M3 / GLM-5.x 把 reasoning 内联在 `content` 里。必须用
 4. 涉及新配置的 → 加进 `core/config.py` 并在 `.env.example` 补一行
 5. 测试放 `backend/tests/`, 必须离线 (不发网络请求、不要 LLM key)
 
-## 已知待办 (2026-10-20)
+## 已知待办 (2026-10-21)
 
-- [ ] 错题本闭环: v1.2.2 删掉了 `wrong_book` 工具链, 错题只剩手动录入
-- [ ] 学科题库/知识点: RAG 里目前只有院校信息, 没有题目 —— 讲题工作流第 1 步"用 RAG 拿题目原文"落不了地
-- [ ] 中考场景: 只有 chat/exam/volunteer, 没有中考
+- [ ] 学科题库 (真实题目): v1.3.0 做的是**知识点卡**(定义/公式/易错点), 不是**题目**。
+      讲题工作流第 1 步"用 RAG 拿题目原文"仍然落不了地 —— 需要真正的题库 (注意版权)。
+- [ ] 计划→执行→复盘闭环: `suggest_schedule` 只出草稿, 没有复盘
+- [ ] 模考录入的前端: 后端 API 有了, 前端还没有录入界面
 - [ ] 前端巨型文件: ChatPage.tsx 84KB / SettingsModal.tsx 48KB / style.py 51KB
 - [ ] 数据库迁移: 靠运行时 `CREATE TABLE IF NOT EXISTS` + `ALTER TABLE`, 没有版本化迁移
-- [ ] 二进制资产出 git: 9.2MB 头像 + 675KB 游戏直接进版本库
+- [ ] 志愿模块冻结: 23→28 个工具里 9 个是志愿类, 对初中生零价值, 已停止新增功能
