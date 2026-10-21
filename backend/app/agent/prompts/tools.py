@@ -390,6 +390,112 @@ _SCHEDULE_TOOLS = [
 TOOLS.extend(_SCHEDULE_TOOLS)
 
 
+# ===== v1.3.0 学习主线工具 (错题本 / 掌握度 / 模考) =====
+
+_LEARNING_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "add_mistake",
+            "description": "把一道错题归档进错题本, 并按知识点标签更新掌握度. 学生发题目照片/文本说'这道我做错了'、'帮我记下来'时用.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "subject": {"type": "string", "description": "科目: 数学/物理/化学/英语/语文"},
+                    "title": {"type": "string", "description": "题目一句话摘要"},
+                    "content": {"type": "string", "description": "题目原文 (能拿到就填)"},
+                    "my_answer": {"type": "string", "description": "学生当时的答案"},
+                    "correct_answer": {"type": "string", "description": "正确答案"},
+                    "cause": {
+                        "type": "string",
+                        "enum": ["concept", "calculation", "method", "unfamiliar", "careless", "time"],
+                        "description": "错因: concept=概念不清 calculation=计算失误 method=方法不会 unfamiliar=题型不熟 careless=粗心 time=时间不够",
+                    },
+                    "knowledge_tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "涉及的知识点 (越准越好). 掌握度按这个更新, 叫法要跟知识点库标准名一致.",
+                    },
+                    "difficulty": {"type": "integer", "description": "难度 1-5", "default": 3},
+                },
+                "required": ["subject", "title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_mistakes",
+            "description": "查错题本. 学生问'我有哪些错题'/'今天要复习什么'时用.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "subject": {"type": "string", "description": "科目, 留空=全部"},
+                    "only_due": {"type": "boolean", "description": "True=只返回今天到期的"},
+                    "limit": {"type": "integer", "description": "最多返回条数", "default": 20},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_weak_points",
+            "description": "查薄弱知识点 (掌握度低+错过). 学生问'我最差的是什么'/'该从哪开始补'时用.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "subject": {"type": "string", "description": "科目, 留空=全部"},
+                    "limit": {"type": "integer", "description": "最多返回条数", "default": 10},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_exam_score",
+            "description": "录入一次模考/期中成绩, 并把各题失分归因到知识点. 学生报出成绩时用.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "考试名, 如 '高一上期中' '中考一模'"},
+                    "subject": {"type": "string", "description": "科目"},
+                    "score": {"type": "number", "description": "得分"},
+                    "total": {"type": "number", "description": "满分"},
+                    "exam_date": {"type": "string", "description": "YYYY-MM-DD, 不填按今天"},
+                    "detail": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "description": '各题失分明细, 每项 {"q":"第3题","kp":"二次函数","lost":8,"total":12,"why":"计算错误"}. kp 填了才会归因到掌握度.',
+                    },
+                    "note": {"type": "string", "description": "备注"},
+                },
+                "required": ["name", "subject", "score"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_knowledge_points",
+            "description": "在知识点库里搜标准名称 (按名称/别名/摘要). 不确定某个知识点的标准叫法时先用它, 叫法不一致会导致掌握度记不上.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "keyword": {"type": "string", "description": "关键词"},
+                    "subject": {"type": "string", "description": "科目, 留空=全部"},
+                    "limit": {"type": "integer", "description": "最多返回条数", "default": 10},
+                },
+                "required": ["keyword"],
+            },
+        },
+    },
+]
+
+TOOLS.extend(_LEARNING_TOOLS)
+
+
 def _assert_tools_match_registry() -> None:
     """自检: TOOLS 的工具名 必须和 TOOL_REGISTRY 的键一致
 

@@ -116,6 +116,8 @@ class AgentOrchestrator:
             deep_thinking=ctx["dt_on"],
             primary_model=route["primary_model"],
             fallback_models=route["fallback_models"],
+            # v1.3.0: 按学段过滤工具 (初中生看不到志愿工具)
+            tool_allowlist=ctx.get("tool_allowlist"),
         )
 
         # 4) 持久化 — v2.0: 强制传 scenario, 防串台
@@ -258,6 +260,8 @@ class AgentOrchestrator:
             primary_model=route["primary_model"],
             fallback_models=route["fallback_models"],
             stop_event=stop_event,
+            # v1.3.0: 按学段过滤工具 (初中生看不到志愿工具)
+            tool_allowlist=ctx.get("tool_allowlist"),
         ):
             if ev_type == "reasoning":
                 reasoning_text += ev_data

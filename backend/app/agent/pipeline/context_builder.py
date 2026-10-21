@@ -43,42 +43,35 @@ def _summarize_rag(user_resources: list, kb_results: list) -> Dict:
 
 
 # ===== v2.0: profile 衍生指令注入 =====
-def _build_profile_injection(user_profile: dict) -> str:
+# v1.3.0: 学段策略从"一句话"升级为"每学段一套教学策略" (见 app/learning/stage.py)
+def _build_profile_injection(user_profile: dict, user_message: str = "") -> str:
     """根据 user profile 拼一段额外指令, 追加到 system prompt 末尾.
 
-    规则:
-    - stage=='初中': 用初中方法, 不引入高中公式
+    规则 (v1.3.0):
+    - stage: 整套教学策略 (方法/术语/重点/考试语境), 不再是一句话
+    - 情绪检测: 学生状态差时先安抚再拆解 (crisis / overloaded)
     - language=='英文': 回复以英文为主
     - agent_name 非默认 ('张雪峰'): 改称谓
     - persona: 注入对应人格 prompt (teacher_zhang/xuejie/duanzishou)
     - 调用方负责 skip scenario='volunteer' (其 persona 已自带张雪峰风格)
     """
-    if not user_profile:
-        return ""
-
     blocks: list[str] = []
 
     stage = (user_profile.get("stage") or "").strip()
-    if stage == "初中":
-        blocks.append(
-            "用户是初中生, 解题用初中方法, 不引入高中公式"
-        )
-    elif stage == "小学":
-        blocks.append(
-            "用户是小学生, 用最简单的方式讲, 不要用超过小学范围的术语"
-        )
-    elif stage == "大学":
-        blocks.append(
-            "用户是大学生, 可以聊专业方向 / 考研 / 实习 / 就业"
-        )
-    elif stage == "考研":
-        blocks.append(
-            "用户在备考研究生, 重点聊考研复习 / 院校选择 / 学术方向"
-        )
-    elif stage == "在职":
-        blocks.append(
-            "用户已经在工作, 重点聊职业发展 / 跳槽 / 转行 / 技能提升"
-        )
+    education_stage = (user_profile.get("education_stage") or "").strip()
+    if stage or education_stage:
+        from app.learning.stage import get_profile
+        prof = get_profile(stage, education_stage)
+        blocks.append(f"【学段】{prof['label']} —— {prof['teaching']}")
+        blocks.append(f"【当前重点】{prof['focus']}")
+        if prof.get("exam_context"):
+            blocks.append(f"【考试语境】{prof['exam_context']}")
+
+    # v1.3.0: 情绪状态检测 —— 状态差时不要讲道理
+    from app.learning.stage import detect_emotional_state
+    emo = detect_emotional_state(user_message)
+    if emo["guidance"]:
+        blocks.append(f"【情绪状态】{emo['guidance']}")
 
     language = (user_profile.get("language") or "").strip()
     if language == "英文":
@@ -179,7 +172,7 @@ async def build_messages(
     # v2.0: profile 衍生指令注入 (末尾追加)
     # 注意: 报志愿场景 (scenario='volunteer') 已自带"张雪峰"风格 persona, **不要覆盖**
     if scenario != "volunteer" and user_profile:
-        profile_injection = _build_profile_injection(user_profile)
+        profile_injection = _build_profile_injection(user_profile, user_message)
         if profile_injection:
             system_prompt = system_prompt + "\n\n" + profile_injection
 
@@ -205,6 +198,16 @@ async def build_messages(
     )
     messages.append(user_content)
 
+    # v1.3.0: 该学段允许用的工具 —— 上层据此把志愿类工具从 schema 里摘掉
+    # (硬过滤, 不是靠 prompt 说"你别用")
+    try:
+        from app.learning.stage import allowed_tools
+        stage_key = (user_profile or {}).get("stage") or ""
+        edu_key = (user_profile or {}).get("education_stage") or ""
+        tool_allowlist = allowed_tools(stage_key, edu_key)
+    except Exception:
+        tool_allowlist = None  # None = 不过滤, 用全部工具
+
     return {
         "messages": messages,
         "rag_summary": rag_summary,
@@ -213,4 +216,5 @@ async def build_messages(
         "ws_on": ws_on,
         "dt_on": dt_on,
         "rag_trace": tracer.to_dict() if tracer else None,  # v0.1
+        "tool_allowlist": tool_allowlist,  # v1.3.0
     }
