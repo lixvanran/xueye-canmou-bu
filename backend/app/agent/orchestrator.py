@@ -244,6 +244,7 @@ class AgentOrchestrator:
         full_content = ""
         reasoning_text = ""
         tool_calls_count = 0
+        llm_failed = False  # v1.2.3: 所有模型都失败时置 True
         # v0.8.0: 深推时去掉 inline 图
         from app.agent.pipeline.preprocessor import build_user_content
         if ctx["dt_on"] and _has_inline_image(ctx["messages"]):
@@ -281,18 +282,25 @@ class AgentOrchestrator:
                 full_content = ev_data["content"]
                 if ev_data["reasoning"] and not reasoning_text:
                     reasoning_text = ev_data["reasoning"]
+                # v1.2.3: model_used 为 None = 所有模型都失败, 如实标记, 不要沿用
+                # route 里的 primary 名字 (那会把失败报成成功)
                 if ev_data.get("model_used"):
                     route_info["model"] = ev_data["model_used"]
+                else:
+                    route_info["model"] = None
+                    llm_failed = True
 
         llm_latency_ms = round((_time.time() - llm_started) * 1000, 2)
 
         # v0.1.7: LLM 完成事件 — 含最终 token 估算 + 模型
+        # v1.2.3: 加 failed 标记, 让前端 trace 面板能区分"成功"和"全模型失败"
         llm_done_payload = {
             'latency_ms': llm_latency_ms,
             'content_length': len(full_content),
             'reasoning_length': len(reasoning_text),
             'tool_calls_count': tool_calls_count,
             'model_used': route_info.get('model'),
+            'failed': llm_failed,
         }
         yield f"[LLM_DONE]{json.dumps(llm_done_payload, ensure_ascii=False)}[/LLM_DONE]\n\n"
 

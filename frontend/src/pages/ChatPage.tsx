@@ -1693,10 +1693,15 @@ function AgentTracePanel({ trace, liveTrace }: { trace: any; liveTrace: any }) {
     {
       key: 'llm_done',
       icon: Sparkles,
-      label: 'LLM 完成',
-      color: 'bg-green-100 text-green-700',
+      // v1.2.3: 全部模型失败时 failed=true → 标红, 不再显示成"成功"
+      label: t.llm_done?.failed ? 'LLM 失败' : 'LLM 完成',
+      color: t.llm_done?.failed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700',
       data: t.llm_done,
-      sub: t.llm_done ? `${t.llm_done.latency_ms}ms · 输出 ${t.llm_done.content_length} 字` : undefined,
+      sub: t.llm_done
+        ? (t.llm_done.failed
+            ? `全部模型调用失败 · ${t.llm_done.latency_ms}ms`
+            : `${t.llm_done.latency_ms}ms · 输出 ${t.llm_done.content_length} 字`)
+        : undefined,
     },
   ]
 
@@ -1796,7 +1801,7 @@ function AgentTracePanel({ trace, liveTrace }: { trace: any; liveTrace: any }) {
           {t.end && (
             <div className="pt-2 border-t border-zinc-100 flex flex-wrap gap-3 text-zinc-600">
               <span><Clock size={10} className="inline mr-1" />总耗时 <b>{(t.end.total_latency_ms / 1000).toFixed(2)}s</b></span>
-              <span><Cpu size={10} className="inline mr-1" />模型 <b>{t.end.model_used}</b></span>
+              <span><Cpu size={10} className="inline mr-1" />模型 <b>{t.end.model_used ?? '全部失败'}</b></span>
               <span><Database size={10} className="inline mr-1" />上下文 <b>{t.end.ctx_latency_ms}ms</b></span>
               <span><Network size={10} className="inline mr-1" />路由 <b>{t.end.route_latency_ms}ms</b></span>
               <span><Sparkles size={10} className="inline mr-1" />LLM <b>{t.end.llm_latency_ms}ms</b></span>
