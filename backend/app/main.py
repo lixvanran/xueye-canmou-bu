@@ -75,47 +75,45 @@ async def lifespan(app: FastAPI):
 
 
 async def self_check_openrouter():
-    """启动时调 /api/v1/auth/key 验证, 不消耗 token
-    - 200 → ✓ key 有效 (会显示余额)
-    - 401 → ✗ 立刻告诉用户去哪修
+    """启动时校验 LLM key, 不消耗 token (OpenRouter 走 /auth/key, 其他走极小探测)
+    - ok → ✓ key 有效
+    - 401/403 → ✗ 立刻告诉用户去哪修
+    - v1.2.4: 校验端点跟随 LLM_BASE_URL, 不再写死 OpenRouter
     """
     if not settings.LLM_API_KEY:
         logger.error(
             "✗ LLM_API_KEY 未设置! 任何消息都会报 401. "
-            "请编辑 .env 填上 OpenRouter key 再重启。"
+            "请编辑 .env 填上 LLM key 再重启。"
         )
         return
     try:
-        import httpx
-        r = await httpx.AsyncClient().get(
-            "https://openrouter.ai/api/v1/auth/key",
-            headers={"Authorization": f"Bearer {settings.LLM_API_KEY}"},
-            timeout=15,
+        from app.agent.llm.provider_check import check_llm_credentials
+        result = await check_llm_credentials(
+            settings.LLM_API_KEY, settings.LLM_BASE_URL
         )
-        if r.status_code == 200:
-            data = r.json().get("data", {})
-            logger.info(
-                f"✓ OpenRouter self-check OK "
-                f"(账号={data.get('email','?')}, "
-                f"余额=${data.get('limit_remaining','?')}/${data.get('limit','?')}, "
-                f"免费档={data.get('is_free_tier','?')})"
-            )
-        elif r.status_code == 401:
+        if result["ok"]:
+            acct = result.get("account") or {}
+            if acct:
+                logger.info(
+                    f"✓ LLM self-check OK "
+                    f"(服务商={result['provider']}, 账号={acct.get('email','?')}, "
+                    f"余额=${acct.get('limit_remaining','?')}/${acct.get('limit','?')}, "
+                    f"免费档={acct.get('is_free_tier','?')})"
+                )
+            else:
+                logger.info(f"✓ LLM self-check OK ({result['hint']})")
+        else:
             logger.error(
-                f"✗ OpenRouter key 无效 (401 User not found)!\n"
-                f"  当前 key 前 8 位: {settings.LLM_API_KEY[:12]}...\n"
-                f"  你的 .env 里这个 key OpenRouter 不认账\n"
+                f"✗ LLM key 无效 ({result.get('error_code') or '?'})!\n"
+                f"  当前 key 前 12 位: {settings.LLM_API_KEY[:12]}...\n"
+                f"  base_url: {settings.LLM_BASE_URL}\n"
+                f"  错误: {result.get('error')}\n"
                 f"  解决:\n"
-                f"    1) 去 https://openrouter.ai/keys 看 key 列表里有没有这个\n"
-                f"    2) 没有 → Create 一个新的, 复制完整 key 贴到 .env\n"
-                f"    3) 有但失败 → 它已经被 disable, 重新 Create\n"
-                f"    4) 都搞不定 → 跑 python scripts/test_key.py 看具体错\n"
+                f"    {result.get('hint', '')}\n"
                 f"  提示: 可在浏览器打开 http://localhost:3000 → 左下'系统诊断'"
             )
-        else:
-            logger.warning(f"⚠ OpenRouter self-check 异常: HTTP {r.status_code}: {r.text[:200]}")
     except Exception as e:
-        logger.warning(f"⚠ OpenRouter self-check failed: {e}")
+        logger.warning(f"⚠ LLM self-check failed: {e}")
 
 
 # v0.9.5: 删 self_check_anthropic_access 和 _probe_high_tier_access
@@ -211,74 +209,25 @@ async def diagnose():
             "actions": ["编辑 .env, 在 LLM_API_KEY= 后面填上你的 OpenRouter key, 重启 启动.bat"],
         }
         return result
-    # 用 OpenRouter 自家的 /api/v1/auth/key 端点验证, 不消耗 token
-    try:
-        r = await httpx.AsyncClient().get(
-            "https://openrouter.ai/api/v1/auth/key",
-            headers={"Authorization": f"Bearer {settings.LLM_API_KEY}"},
-            timeout=15,
-        )
-        if r.status_code == 200:
-            data = r.json().get("data", {})
-            result["llm_test"] = {
-                "ok": True,
-                "model": "auth validated",
-                "message": "✓ OpenRouter key 有效",
-                "account": {
-                    "email": data.get("email"),
-                    "is_free_tier": data.get("is_free_tier"),
-                    "limit": data.get("limit"),
-                    "limit_remaining": data.get("limit_remaining"),
-                    "usage": data.get("usage"),
-                    "rate_limit": data.get("rate_limit"),
-                },
-            }
-        elif r.status_code == 401:
-            data = r.json()
-            result["llm_test"] = {
-                "ok": False,
-                "error_code": 401,
-                "error": data.get("error", {}).get("message", "Unknown 401"),
-                "diagnosis": "key 格式对, 但 OpenRouter 找不到这个 key 对应的账号",
-                "actions": [
-                    "1. 去 https://openrouter.ai/keys 看这个 key 是否在列表里",
-                    "2. 如果不在 → 点 'Create Key' 重新生成一个, 复制完整 key 到 .env",
-                    "3. 如果在列表但验证失败 → 这个 key 已经被 disable/revoke 了, 重新 Create",
-                    "4. 如果怎么都创不出能用的 key → 联系 OpenRouter support, 可能是账号问题",
-                    "5. 验证 key 是否有效: python scripts/test_key.py",
-                ],
-            }
-        elif r.status_code == 429:
-            result["llm_test"] = {
-                "ok": False,
-                "error_code": 429,
-                "error": "OpenRouter 限流",
-                "actions": ["等几分钟重试, 或升级 OpenRouter 套餐"],
-            }
-        else:
-            result["llm_test"] = {
-                "ok": False,
-                "error_code": r.status_code,
-                "error": r.text[:500],
-                "actions": ["把这页发给开发者"],
-            }
-    except httpx.ConnectError as e:
+    # v1.2.4: 校验端点跟随 LLM_BASE_URL —— 不再写死 openrouter.ai
+    # (之前换任何 OpenAI 兼容端点都会被误判成"key 无效")
+    from app.agent.llm.provider_check import check_llm_credentials
+    chk = await check_llm_credentials(settings.LLM_API_KEY, settings.LLM_BASE_URL)
+    if chk["ok"]:
         result["llm_test"] = {
-            "ok": False,
-            "error_code": -1,
-            "error": f"连不上 OpenRouter: {e}",
-            "diagnosis": "项目到 openrouter.ai 的网络不通 (可能是防火墙/代理/账号地区限制)",
-            "actions": [
-                "1. 在浏览器打开 https://openrouter.ai 看能不能访问",
-                "2. 如果打不开 → 这是网络问题, 需要科学上网 / 换代理",
-                "3. 如果能打开但项目连不上 → 检查 Windows 防火墙",
-            ],
+            "ok": True,
+            "model": chk["method"],
+            "message": chk["hint"],
         }
-    except Exception as e:
+        if chk.get("account"):
+            result["llm_test"]["account"] = chk["account"]
+    else:
         result["llm_test"] = {
             "ok": False,
-            "error": f"诊断失败: {e}",
-            "actions": ["把这段错误发我"],
+            "error_code": chk.get("error_code"),
+            "error": chk.get("error"),
+            "diagnosis": chk.get("hint"),
+            "actions": [chk.get("hint", "")],
         }
 
     # v0.8.0: 3 档全量 ping - 在 API Key 下分别验证 low/mid/high 的 primary + fallback

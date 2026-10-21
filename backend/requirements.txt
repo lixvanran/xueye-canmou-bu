@@ -1,24 +1,37 @@
+# ===== 依赖版本 (v1.2.4 起钉死) =====
+#
+# 之前这里是 >= 浮动版本 → 同一个 zip, 今天能跑明天不能跑 (上游发个 minor 就炸),
+# 而且本地应用没法复现问题。
+#
+# 现在: 直接依赖全部钉死, 间接依赖由 pip 解析。
+# 要升级: 改下面这行 → 删掉 .venv 重装 → 跑 pytest + 手动点一遍关键路径。
+#
+#   pip install -U <包名>==<新版本>
+#   pip freeze > /tmp/frozen.txt   # 拿到实际装上的版本
+#
+# 测试环境额外需要 (CI 里单独装): pytest
+
 # ===== 核心 =====
-fastapi>=0.110.0
-uvicorn[standard]>=0.27.0
-openai>=1.12.0
-sqlalchemy>=2.0.27
-pydantic>=2.6.1
-pydantic-settings>=2.2.1
-python-multipart>=0.0.9
-aiofiles>=23.2.1
-python-dotenv>=1.0.1
-httpx>=0.27.0
-sse-starlette>=2.0.0
+fastapi==0.151.0
+uvicorn[standard]==0.54.0
+openai==3.35.1
+sqlalchemy==2.1.5
+pydantic==2.14.1
+pydantic-settings==2.16.0
+python-multipart==0.0.32
+aiofiles==25.1.0
+python-dotenv==1.2.4
+httpx==0.28.1
+sse-starlette==3.5.0
 
 # ===== Embedding（可选，开了 OPENAI_API_KEY 才会用上 OpenAI）=====
 # sentence-transformers 没用上, 列了也不装, 删了
 # chromadb 没用上, 删了
 
 # ===== 联网搜索 =====
-duckduckgo-search>=6.0
-beautifulsoup4>=4.12.0
-lxml>=5.0.0
+duckduckgo-search==8.1.1
+beautifulsoup4==4.15.0
+lxml==6.1.3
 
 # ===== Tavily 搜索（可选, 需要时自己加）=====
-# tavily-python>=0.3.0
+# tavily-python==0.3.0

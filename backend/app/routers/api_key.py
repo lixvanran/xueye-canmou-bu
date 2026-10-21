@@ -217,30 +217,26 @@ async def test_api_key(req: ApiKeySetRequest = Body(default_factory=ApiKeySetReq
             raise HTTPException(400, err)
         source = "input"
 
+    # v1.2.4: 校验端点跟随 LLM_BASE_URL (之前写死 OpenRouter, 换服务商必误报无效)
+    from app.agent.llm.provider_check import check_llm_credentials
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.get(
-                "https://openrouter.ai/api/v1/auth/key",
-                headers={"Authorization": f"Bearer {key}"},
-            )
-        if r.status_code == 200:
-            data = r.json().get("data", {})
+        chk = await check_llm_credentials(key, settings.LLM_BASE_URL)
+        if chk["ok"]:
+            acct = chk.get("account") or {}
             return ApiKeyTestResponse(
                 ok=True,
-                email=data.get("email"),
-                is_free_tier=data.get("is_free_tier"),
-                limit=data.get("limit"),
-                limit_remaining=data.get("limit_remaining"),
-                usage=data.get("usage"),
+                email=acct.get("email"),
+                is_free_tier=acct.get("is_free_tier"),
+                limit=acct.get("limit"),
+                limit_remaining=acct.get("limit_remaining"),
+                usage=acct.get("usage"),
+                error=None if not acct else None,
             )
-        else:
-            return ApiKeyTestResponse(
-                ok=False,
-                error_code=r.status_code,
-                error=f"OpenRouter 返回 {r.status_code}: {r.text[:200]}",
-            )
-    except httpx.ConnectError as e:
-        return ApiKeyTestResponse(ok=False, error=f"连不上 OpenRouter: {e}")
+        return ApiKeyTestResponse(
+            ok=False,
+            error_code=chk.get("error_code"),
+            error=chk.get("error") or chk.get("hint"),
+        )
     except Exception as e:
         logger.error(f"API key test failed: {e}")
         return ApiKeyTestResponse(ok=False, error=str(e))

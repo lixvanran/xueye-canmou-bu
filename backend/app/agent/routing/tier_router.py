@@ -15,9 +15,9 @@ from app.agent.routing.classifier import (
     get_classifier,
 )
 from app.agent.routing.model_whitelist import (
-    MODEL_WHITELIST,
-    DEFAULT_TIER_MODELS,
+    resolve_tier_models,
     is_model_allowed,
+    detect_provider,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,26 +33,40 @@ class TierInfo:
 
 
 # 默认档位定义 (用户 2026-08-11 拍板)
-DEFAULT_TIERS = {
-    "low": TierInfo(
-        primary=DEFAULT_TIER_MODELS["low"],
-        fallback=[m for m in MODEL_WHITELIST["low"] if m != DEFAULT_TIER_MODELS["low"]],
-        description="闲聊 / 简单查询 / 1-2 步任务",
-        tier_label="low",
-    ),
-    "medium": TierInfo(
-        primary=DEFAULT_TIER_MODELS["medium"],
-        fallback=[m for m in MODEL_WHITELIST["medium"] if m != DEFAULT_TIER_MODELS["medium"]],
-        description="标准问答 / 多步推理",
-        tier_label="medium",
-    ),
-    "high": TierInfo(
-        primary=DEFAULT_TIER_MODELS["high"],
-        fallback=[m for m in MODEL_WHITELIST["high"] if m != DEFAULT_TIER_MODELS["high"]],
-        description="复杂规划 / 深度推理 (需开启 high 模式)",
-        tier_label="high",
-    ),
+# v1.2.4: 档位模型改为 provider 感知 ——
+# primary/fallback 由 resolve_tier_models() 按 LLM_BASE_URL 解析,
+# 认不出的 base_url 回落 openrouter (与 v1.2.3 行为逐条一致)。
+_TIER_DESCRIPTIONS = {
+    "low": "闲聊 / 简单查询 / 1-2 步任务",
+    "medium": "标准问答 / 多步推理",
+    "high": "复杂规划 / 深度推理 (需开启 high 模式)",
 }
+
+
+def _build_default_tiers() -> dict:
+    out = {}
+    for tier, desc in _TIER_DESCRIPTIONS.items():
+        primary, fallback = resolve_tier_models(tier)
+        out[tier] = TierInfo(
+            primary=primary,
+            fallback=fallback,
+            description=desc,
+            tier_label=tier,
+        )
+    return out
+
+
+DEFAULT_TIERS = _build_default_tiers()
+
+
+def _default_primary(tier: str) -> str:
+    """某档位在当前 provider 下的默认主模型
+
+    v1.2.4: 取代旧的 DEFAULT_TIER_MODELS 常量 —— 默认值现在是 provider 相关的
+    (openrouter / minimax / deepseek / 智谱 / 硅基流动 各不相同)。
+    """
+    primary, _ = resolve_tier_models(tier)
+    return primary
 
 
 def _read_user_pref(key: str, default: str) -> str:
@@ -84,28 +98,33 @@ def _read_user_pref(key: str, default: str) -> str:
 
 
 def _build_fallback(tier: str, primary: str) -> list[str]:
-    """从白名单构建 fallback 链 (排除 primary)"""
-    return [m for m in MODEL_WHITELIST[tier] if m != primary]
+    """从当前 provider 的白名单构建 fallback 链 (排除 primary)
+
+    v1.2.4: 走 resolve_tier_models, 不再直接摸 MODEL_WHITELIST
+    (否则换 provider 后 fallback 链还是旧 provider 的 model id)
+    """
+    _, fallback = resolve_tier_models(tier)
+    return [m for m in fallback if m != primary]
 
 
 def _load_tiers_from_db() -> dict[str, TierInfo]:
     """从 DB 读档位配置 — 模块级函数, 供 TierRouter 和 /api/diagnose 共用"""
     return {
         "low": TierInfo(
-            primary=_read_user_pref("model_low", DEFAULT_TIER_MODELS["low"]),
-            fallback=_build_fallback("low", _read_user_pref("model_low", DEFAULT_TIER_MODELS["low"])),
+            primary=_read_user_pref("model_low", _default_primary("low")),
+            fallback=_build_fallback("low", _read_user_pref("model_low", _default_primary("low"))),
             description=DEFAULT_TIERS["low"].description,
             tier_label="low",
         ),
         "medium": TierInfo(
-            primary=_read_user_pref("model_medium", DEFAULT_TIER_MODELS["medium"]),
-            fallback=_build_fallback("medium", _read_user_pref("model_medium", DEFAULT_TIER_MODELS["medium"])),
+            primary=_read_user_pref("model_medium", _default_primary("medium")),
+            fallback=_build_fallback("medium", _read_user_pref("model_medium", _default_primary("medium"))),
             description=DEFAULT_TIERS["medium"].description,
             tier_label="medium",
         ),
         "high": TierInfo(
-            primary=_read_user_pref("model_high", DEFAULT_TIER_MODELS["high"]),
-            fallback=_build_fallback("high", _read_user_pref("model_high", DEFAULT_TIER_MODELS["high"])),
+            primary=_read_user_pref("model_high", _default_primary("high")),
+            fallback=_build_fallback("high", _read_user_pref("model_high", _default_primary("high"))),
             description=DEFAULT_TIERS["high"].description,
             tier_label="high",
         ),
@@ -137,20 +156,20 @@ class TierRouter:
         """加载白名单默认值 (不读 DB)"""
         return {
             "low": TierInfo(
-                primary=DEFAULT_TIER_MODELS["low"],
-                fallback=_build_fallback("low", DEFAULT_TIER_MODELS["low"]),
+                primary=_default_primary("low"),
+                fallback=_build_fallback("low", _default_primary("low")),
                 description=DEFAULT_TIERS["low"].description,
                 tier_label="low",
             ),
             "medium": TierInfo(
-                primary=DEFAULT_TIER_MODELS["medium"],
-                fallback=_build_fallback("medium", DEFAULT_TIER_MODELS["medium"]),
+                primary=_default_primary("medium"),
+                fallback=_build_fallback("medium", _default_primary("medium")),
                 description=DEFAULT_TIERS["medium"].description,
                 tier_label="medium",
             ),
             "high": TierInfo(
-                primary=DEFAULT_TIER_MODELS["high"],
-                fallback=_build_fallback("high", DEFAULT_TIER_MODELS["high"]),
+                primary=_default_primary("high"),
+                fallback=_build_fallback("high", _default_primary("high")),
                 description=DEFAULT_TIERS["high"].description,
                 tier_label="high",
             ),
@@ -200,7 +219,7 @@ class TierRouter:
         - advanced: 正常 classifier + 允许 high tier
         """
         # 第一次调用时尝试从 DB 加载
-        if self.tiers["low"].primary == DEFAULT_TIER_MODELS["low"]:
+        if self.tiers["low"].primary == _default_primary("low"):
             # 还在用默认值, 尝试从 DB 读
             try:
                 self.tiers = _load_tiers_from_db()

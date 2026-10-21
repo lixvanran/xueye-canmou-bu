@@ -1,6 +1,15 @@
 """Tool schema 定义 - 暴露给 LLM 的工具
 暂放这里, Phase 1e 会拆到 tools/ 目录
+
+v1.2.4: 补上 5 个日程工具的 schema (create/list/update/delete/suggest_schedule)。
+        之前它们只注册在 TOOL_REGISTRY 里, **没进本列表** ⇒
+        LLM 的请求里根本不含这些工具 ⇒ AI 永远调不到日程功能
+        (SchedulePage 的 HTTP 端点能用, 但"帮我安排学习计划"这类话走不通)。
+        另加一个自检 _assert_tools_match_registry(), 防止再漂移。
 """
+import re as _re
+from pathlib import Path
+
 TOOLS = [
     {
         "type": "function",
@@ -284,3 +293,134 @@ TOOLS = [
         },
     },
 ]
+
+
+# ===== v1.2.4: 日程工具 (v2.0 加的, 之前漏了 schema, LLM 调不到) =====
+
+_SCHEDULE_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "create_schedule",
+            "description": "创建一条日程/学习计划. 学生说'帮我安排明天下午复习数学'时用.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "date": {"type": "string", "description": "日期 'YYYY-MM-DD'"},
+                    "content": {"type": "string", "description": "内容 (短文本, 一行)"},
+                    "type": {"type": "string", "description": "类型: study/exam/rest/custom", "default": "study"},
+                    "note": {"type": "string", "description": "备注 (可选)"},
+                    "resource_id": {"type": "integer", "description": "关联的资料/错题 ID (可选)"},
+                },
+                "required": ["date", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_schedule",
+            "description": "查日程/学习计划. 学生问'我明天有什么安排'/'这周计划'时用.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "date_range": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "[开始日期, 结束日期] 'YYYY-MM-DD'. 不传 = 查全部",
+                    },
+                    "type": {"type": "string", "description": "类型过滤: study/exam/rest/custom"},
+                    "include_completed": {"type": "boolean", "description": "是否含已完成, 默认 true"},
+                    "limit": {"type": "integer", "description": "最多返回条数, 默认 100"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_schedule",
+            "description": "更新一条日程 (改时间/内容/标记完成). 学生说'把明天那项改到后天'/'这项搞定了'时用.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer", "description": "日程 ID (先用 list_schedule 拿到)"},
+                    "date": {"type": "string", "description": "新日期 'YYYY-MM-DD'"},
+                    "content": {"type": "string", "description": "新内容"},
+                    "type": {"type": "string", "description": "新类型: study/exam/rest/custom"},
+                    "note": {"type": "string", "description": "新备注"},
+                    "completed": {"type": "boolean", "description": "是否完成"},
+                },
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_schedule",
+            "description": "删除一条日程. 学生说'删掉那条'时用.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer", "description": "日程 ID (先用 list_schedule 拿到)"},
+                },
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "suggest_schedule",
+            "description": "根据目标自动生成 N 天学习计划草稿 (只返回草稿, 不直接入库, 需要用户确认后再 create_schedule). 学生说'帮我安排学习计划'/'离期末还有两周怎么排'时用.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string", "description": "学生目标, 如 '期末数学冲120' '中考物理提20分'"},
+                    "days": {"type": "integer", "description": "生成天数, 默认 7"},
+                    "start_date": {"type": "string", "description": "起始日期 'YYYY-MM-DD', 不传 = 今天"},
+                },
+                "required": ["goal"],
+            },
+        },
+    },
+]
+
+TOOLS.extend(_SCHEDULE_TOOLS)
+
+
+def _assert_tools_match_registry() -> None:
+    """自检: TOOLS 的工具名 必须和 TOOL_REGISTRY 的键一致
+
+    v1.2.4: 日程 5 个工具就是栽在这 —— registry 有、schema 没有,
+    于是 LLM 调不到, 而"一切正常"。
+
+    规则: registry 里的每个工具都必须在 TOOLS 里出现 (schema ⊇ registry)。
+    schema 多出 registry 没有的 → 也要报错 (LLM 会调到不存在的工具)。
+    """
+    import sys
+    reg_path = Path(__file__).resolve().parents[1] / "tools" / "registry.py"
+    try:
+        src = reg_path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    m = _re.search(r"TOOL_REGISTRY[^=]*=\s*\{(.*?)\n\}", src, _re.S)
+    if not m:
+        return
+    registered = set(_re.findall(r'"([a-z_]+)":', m.group(1)))
+    declared = {t["function"]["name"] for t in TOOLS}
+
+    missing = registered - declared          # 注册了但 LLM 看不见 → 调不到
+    extra = declared - registered            # schema 有但没实现 → 调了必炸
+    if missing or extra:
+        msg = (
+            f"TOOLS 与 TOOL_REGISTRY 不一致! "
+            f"注册了但 LLM 调不到: {sorted(missing)}; "
+            f"schema 有但未注册: {sorted(extra)}"
+        )
+        print(f"\n[TOOL SCHEMA MISMATCH] {msg}", file=sys.stderr)
+        raise RuntimeError(msg)
+
+
+_assert_tools_match_registry()

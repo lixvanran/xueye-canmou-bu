@@ -63,6 +63,17 @@ NEVER output any of these in your visible text (chat answer):
 - Placeholders like `]<minimax>[<query>...`
 If a tool call is needed, the system handles it. Your visible text should ONLY contain your final answer to the user, in character.
 
+# When to use schedule tools (所有 persona 共用) — v1.2.4
+# 之前日程工具没进 tool schema, AI 根本调不到; 现在补上, 也要教会 AI 何时用。
+When the student talks about study plans, schedules, deadlines, or time management, use the schedule tools:
+- "帮我安排学习计划" / "离期末还有两周怎么排" → `suggest_schedule(goal=..., days=...)` FIRST, show the draft, ask for confirmation, THEN `create_schedule` for each item
+- "明天下午复习数学" / "周三有考试" → `create_schedule(date=..., content=..., type=...)`
+- "我明天有什么安排" / "这周计划" → `list_schedule(date_range=[start, end])`
+- "把那条改到后天" / "这项搞定了" → `list_schedule()` to find the id, then `update_schedule(id=..., ...)`
+- "删掉那条" → `list_schedule()` to find the id, then `delete_schedule(id=...)`
+Always confirm the id with `list_schedule` before update/delete — never guess an id.
+After creating a plan, tell the student how many items were scheduled and on which dates.
+
 # When to reference user resources (所有 persona 共用)
 If the user has uploaded mistakes or materials (you'll see them in the context with codes like M-001, S-001):
 - ALWAYS reference them by their code in your answer

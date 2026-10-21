@@ -1,4 +1,4 @@
-# 学业参谋部 v1.2.3
+# 学业参谋部 v1.2.4
 
 > **Fork 声明**：本项目是 [ZhangXuefeng-Agent](https://github.com/lixvanran/ZhangXuefeng-Agent) 的 fork。  
 > 分叉点：`v0.9.8`（commit `fdfd1ee`）。  
@@ -19,6 +19,7 @@
 - **讲题工作流**：四步引导式教学 —— 理解题目、引导思路、评估方案、给出答案，避免直接告知导致思维依赖
 - **长期事实抽取**：对话结束后异步抽取用户关键信息（学科偏好、目标院校、错题模式），自动注入下次对话
 - **RAG 知识库**：内置 10 个 JSON 知识库，覆盖院校 / 专业 / 分数线 / 招生政策 / 就业数据，支持混合检索
+  （⚠️ 目前**不含学科题目** —— 讲题工作流的数据基础是空的，见 AGENTS.md 待办）
 - **一 Key 全跑**：通过 OpenRouter 路由平台，单一 Key 调用 Claude / GPT / Qwen / DeepSeek 等模型，自动故障切换
 - **本地部署**：数据全部留在本机，不上传第三方，对个人信息保护友好
 
@@ -188,7 +189,7 @@ LocalAgent/
 
 ## 版本说明
 
-当前版本 v1.2.3。开发采用迭代式小版本演进，每个版本聚焦一个改进点。
+当前版本 v1.2.4。开发采用迭代式小版本演进，每个版本聚焦一个改进点。
 
 已知版本演进：
 
@@ -200,6 +201,27 @@ LocalAgent/
 - **v1.1.10**：5 P0 修复（persona dropdown 图层层级 / 快速模式 10s→2s 提速 / 切 tab 对话记忆串台 / 切页中断 Agent / 历史版本号残留）+ 版本全套同步
 - **v1.1.11**：16 个 persona 全部加上 AI 生成的 Pixar 风肖像（ChatPage dropdown + trigger + 团队 chip + sub-agent 卡片全集成）+ 课间解压游戏（嵌入张雪峰快跑 + 高一必修一背诵 28 条知识点，只加不减）+ GamePage 新页面（侧栏画像与设置之间）
 - **v1.2.2**：启动.bat 编码修复（加 chcp 65001 + UTF-8 BOM）+ OpenRouter key 替换 + 后端滚回 v1.1.9 仅换 key
+- **v1.2.4**：工程稳定性一轮（目标: 帮助中学生应对中高考）——
+  1. **CI 落地**：`.github/workflows/ci.yml` —— pytest + tsc + build 三道闸门。
+     此前仓库零 CI、零测试，一个 PR 都没合过也没有任何提交前把关。
+  2. **测试 39 项**（`backend/tests/`，全部离线，不需要 LLM key）：
+     v1.2.3 的 10 项 + v1.2.4 的 29 项。测试环境 hermetic（不读本机 `.env`）。
+  3. **日程工具 schema 补全**：5 个日程工具（create/list/update/delete/suggest_schedule）
+     之前只注册在 `TOOL_REGISTRY`，**没进 `prompts/tools.py`** ⇒ LLM 的请求里根本不含它们
+     ⇒ AI 永远调不到日程（SchedulePage 的 HTTP 端点能用，但"帮我安排学习计划"走不通）。
+     现已补齐 + prompt 指引 + `TOOLS ↔ TOOL_REGISTRY` 导入时自检（防再漂移）。
+  4. **模型白名单 provider 感知**：按 `LLM_BASE_URL` 自动识别 openrouter / minimax /
+     deepseek / 智谱 / 硅基流动，每家用自己的 model id 写法。之前写死 OpenRouter 风格，
+     换任何兼容端点 → 17 个模型全 400 → 整条链死。OpenRouter 默认值与 v1.2.3 逐条一致。
+  5. **key 校验跟随 base_url**：`main.py` / `api_key.py` / `settings.py` 四处写死的
+     `openrouter.ai/api/v1/auth/key` 换成统一的 `provider_check.check_llm_credentials()`
+     —— OpenRouter 走 `/auth/key`（能查余额），其他走 1 token 的 chat 探测。
+     之前换端点必然误报"401 User not found"，让用户白折腾自己的 key。
+  6. **`TIER_MODEL_*` 不再是死配置**：此前 `tier_router` 只认 `model_whitelist.py`，
+     从不读 `settings.TIER_MODEL_*` —— 用户改了 `.env` 静默无效。现在是显式覆盖语义
+     （留空 = provider 默认，填了 = 覆盖）。
+  7. **依赖钉死版本**：`requirements.txt` 从 `>=` 浮动改为精确版本（同一个 zip 今天能跑明天不能跑）。
+  8. **AGENTS.md**：仓库此前没有任何开发规范，现在有（含 7 条硬规则 + 已知待办）。
 - **v1.2.3**：3 个 P0 修复（真实 LLM 端到端验证）——
   1. **全模型失败不再被报成成功**：以前所有模型挂掉时 `model_used` 仍然上报 primary 模型名，
      前端 8 步 trace 面板显示绿色"LLM 完成"，实际上一条回答都没生成。现在失败时
